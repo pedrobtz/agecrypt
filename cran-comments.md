@@ -28,9 +28,6 @@ test vectors) with no diagnostics.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 3 notes
+0 errors | 0 warnings | 1 notes
 
 * This is a new submission.
-* The local check host reported that the current time could not be verified.
-* The local check host has an older `tidy` executable. PDF and HTML manual
-  generation completed successfully.
