@@ -29,3 +29,17 @@ OBJECTS = \
 	agec/crypto/hmac.o \
 	agec/crypto/scrypt.o \
 	agec/crypto/sha256.o
+
+# R CMD SHLIB passes this file to make BEFORE shlib.mk, so the first rule here
+# becomes make's default goal. Restating shlib.mk's own default keeps the clean
+# target below from hijacking the build. Keep `all` first among the rules.
+all: $(SHLIB)
+
+# R CMD build's src cleanup only globs *.o in src/ itself; the vendored agec
+# objects are compiled into subdirectories and would otherwise be shipped in the
+# tarball ("Found the following apparent object files/libraries" NOTE). Build
+# runs this as `make -f Makeconf -f clean.mk -f Makevars clean`, where $(SHLIB)
+# is unset and the top-level src/*.o and src/*.so are removed by build itself.
+.PHONY: all clean
+clean:
+	rm -f $(OBJECTS) $(SHLIB)

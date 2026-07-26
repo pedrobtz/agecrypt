@@ -162,3 +162,11 @@ See [vendoring-agec.md](vendoring-agec.md) and
 `src/Makevars` and `src/Makevars.win` list compiled objects explicitly. Both
 use `-iquote`, rather than `-I`, so agec's quoted `io.h` does not shadow the
 Windows system `<io.h>`.
+
+Both also define a `clean` target over `$(OBJECTS)`. `R CMD build` only globs
+`src/*.o` itself, so without that target the objects compiled into `src/agec/`
+and `src/agec/crypto/` end up in the source tarball and `R CMD check` reports
+"Found the following apparent object files/libraries". The `all: $(SHLIB)` rule
+above it is load-bearing: `R CMD SHLIB` passes `Makevars` to `make` ahead of
+`shlib.mk`, so whichever rule comes first becomes the default goal, and a
+leading `clean` target would make installation clean instead of compile.
