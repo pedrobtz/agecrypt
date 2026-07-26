@@ -1,0 +1,30 @@
+# -iquote (not -I): agec headers are all quoted includes, and -iquote keeps the
+# angle-bracket <io.h> pulled in by <unistd.h>/<fcntl.h> resolving to the real
+# Win32 header rather than agec's own agec/io.h. See src/Makevars for the full
+# explanation of this Windows-only header-name collision.
+PKG_CPPFLAGS = -iquote agec -iquote agec/crypto
+PKG_LIBS = -lbcrypt
+
+OBJECTS = \
+	init.o \
+	binding.o \
+	memio.o \
+	platform.o \
+	fileio.o \
+	agec/agecore.o \
+	agec/base64.o \
+	agec/bech32.o \
+	agec/header.o \
+	agec/io.o \
+	agec/keyenc.o \
+	agec/parse.o \
+	agec/payload.o \
+	agec/scrypt.o \
+	agec/util.o \
+	agec/x25519.o \
+	agec/crypto/chacha20poly1305.o \
+	agec/crypto/curve25519.o \
+	agec/crypto/hkdf.o \
+	agec/crypto/hmac.o \
+	agec/crypto/scrypt.o \
+	agec/crypto/sha256.o

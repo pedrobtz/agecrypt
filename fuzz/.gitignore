@@ -1,0 +1,10 @@
+# built targets and fuzzer output
+fuzz_decrypt*
+fuzz_passphrase*
+*.o
+crash-*
+leak-*
+timeout-*
+oom-*
+# regenerated with gen-corpus.R
+corpus/

@@ -1,0 +1,17 @@
+^dev$
+^AGENTS\.md$
+^CLAUDE\.md$
+^fuzz$
+^tools$
+^docs$
+^pkgdown$
+^_pkgdown\.yml$
+^README\.Rmd$
+^cran-comments\.md$
+^CRAN-SUBMISSION$
+^[.]?air[.]toml$
+^LICENSE\.md$
+^\.github$
+^\.vscode$
+^\.DS_Store$
+^\.agents$

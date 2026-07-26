@@ -1,0 +1,14 @@
+# libFuzzer dictionary of age v1 tokens, so mutations can splice in valid
+# keywords and reach deeper parsing states. Used with -dict=age.dict.
+# NB: the only escapes libFuzzer accepts are \\, \" and \xHH -- a newline must
+# be written \x0a, never \n (a \n here fails ParseDictionaryFile).
+version="age-encryption.org/v1\x0a"
+stanza_x25519="-> X25519 "
+stanza_scrypt="-> scrypt "
+stanza_grease="-> "
+hdr_sep="\x0a"
+hdr_end="---"
+mac_space=" "
+armor_begin="-----BEGIN AGE ENCRYPTED FILE-----\x0a"
+armor_end="-----END AGE ENCRYPTED FILE-----\x0a"
+b64_pad="="
