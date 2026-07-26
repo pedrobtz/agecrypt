@@ -51,7 +51,10 @@ provenance is in [`inst/COPYRIGHTS`](../inst/COPYRIGHTS).
   `inst/COPYRIGHTS`.
 - Follow [vendoring-agec.md](vendoring-agec.md) for every vendor update.
 - When compiled source files change, update the explicit `OBJECTS` lists in both
-  `src/Makevars` and `src/Makevars.win`.
+  `src/Makevars` and `src/Makevars.win`. The `clean` targets remove `$(OBJECTS)`,
+  so an out-of-date list also leaks object files into the source tarball.
+- Keep `all: $(SHLIB)` as the first rule in both files. It is what stops the
+  `clean` target from becoming make's default goal during `R CMD SHLIB`.
 - Preserve `-iquote`; replacing it with `-I` can make agec's `io.h` shadow the
   Windows system header.
 
