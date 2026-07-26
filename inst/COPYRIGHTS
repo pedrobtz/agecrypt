@@ -1,0 +1,113 @@
+================================================================================
+Original work (MIT)
+================================================================================
+
+The R source and build glue in this package -- src/binding.c, src/init.c,
+src/memio.c, src/platform.c, src/fileio.c, src/agec/agecore.c, src/agec/agecore.h,
+src/agec/agec.h, src/agec/memio.h, src/agec/fileio.h, and everything under R/ --
+are Copyright (c) 2026 Pedro Baltazar and licensed under the MIT licence, as
+stated in DESCRIPTION and LICENSE.
+
+
+================================================================================
+Vendored work: agec (0BSD)
+================================================================================
+
+The remaining C sources under src/agec/ (base64, bech32, header, io, keyenc,
+parse, payload, scrypt, util, x25519, common.h, and everything under
+src/agec/crypto/) are vendored from "agec", a C implementation of the age file
+encryption format.
+
+    Upstream base:      https://git.sr.ht/~min/agec
+                        commit 19777bc35420f5a3fdc657c223cafb9f76b05754
+                        (git describe: 0.1.0-15-g19777bc, dated 2026-04-26)
+    Vendored snapshot:  https://github.com/pedrobtz/agec, tag vendor-2026-07-09
+                        commit 5c95fe5b7bc0d9888333709eb7443a3a92fe5be7 -- the
+                        upstream base above plus the four bug fixes marked
+                        "[in snapshot]" below.
+
+agec is distributed under the following terms (0BSD), reproduced from its
+LICENSE file:
+
+    Permission to use, copy, modify, and/or distribute this software for
+    any purpose with or without fee is hereby granted.
+
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+    WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+    MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+    ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+    ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+    OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Not vendored: agec's CLI drivers (agec.c, agecgen.c) and its Unix/Plan 9
+platform layers are not included; randomness and file helpers are provided by
+this package's own src/platform.c and src/fileio.c instead.
+
+
+Local modifications to the vendored agec sources
+------------------------------------------------
+
+These fall into two groups. The four fixes marked [in snapshot] are already
+committed in the vendored snapshot (tag vendor-2026-07-09) and are upstreamable
+(they live on the agec fork's fix/* branches). The two marked [package-only] are
+applied to src/agec/ in this package on top of that snapshot. Each change is also
+marked with a comment at the site in the source.
+
+  * src/agec/io.c
+      - [in snapshot] bread()/bpeek(): only report EOF once the bytes buffered
+        by the armor probe are consumed (upstream drops inputs shorter than the
+        35-byte probe). Bug fix.
+      - [package-only] the read()/write() calls are routed through
+        ageread()/agewrite() so the buffers can be backed by memory
+        (src/memio.c) as well as file descriptors.
+      - [in snapshot] recappend(): realloc() into a temporary pointer to avoid
+        leaking / then wiping a NULL buffer on allocation failure.
+  * src/agec/header.c
+      - [in snapshot] hdrappend(): realloc() into a temporary pointer (same
+        fix); va_end() moved so it is not skipped on error returns.
+  * src/agec/scrypt.c
+      - [package-only] added scryptstanzacost(), a work-factor-parameterised
+        variant of scryptstanza(), so the R-level log_n argument can be threaded
+        through.
+  * src/agec/payload.c
+      - [in snapshot] renamed the static helper eof() to ateof(): on Windows the
+        real <io.h> declares a CRT eof(int) that conflicts. File-local rename
+        only.
+
+
+================================================================================
+Third-party sources bundled within agec (public domain)
+================================================================================
+
+agec itself bundles the following implementations, all placed in the public
+domain by their authors:
+
+  src/agec/base64.c           Wei Zhicheng
+                              https://github.com/zhicheng/base64 (81060e3)
+  src/agec/bech32.c           Pascal S. de Kloe
+                              https://github.com/pascaldekloe/bech32 (43757af)
+  src/agec/crypto/curve25519.c ref10 implementation from SUPERCOP
+  src/agec/crypto/chacha20poly1305.c  extracted from monocypher 4.0.2
+  src/agec/crypto/sha256.c    based on FIPS 180-3
+  src/agec/crypto/scrypt.c    scrypt-jane
+                              https://github.com/floodyberry/scrypt-jane (0ab6125)
+
+To update the vendored copy, see .agents/vendoring-agec.md.
+
+
+================================================================================
+Bundled test data
+================================================================================
+
+tests/testthat/fixtures/vectors/ contains a subset of the age test vectors from
+the C2SP CCTV project (the age "testkit"), obtained via the vendored agec test
+suite. They are Copyright (c) 2022 The age Authors and available under the
+Zero-Clause BSD, CC0 1.0, or Unlicense licence (your choice).
+
+    https://github.com/C2SP/CCTV/tree/main/age
+
+tests/testthat/fixtures/interop/ contains ciphertexts and a throwaway key
+generated locally with the reference age implementation
+(https://github.com/FiloSottile/age); they are original test fixtures for this
+package. See tests/testthat/fixtures/README.md.

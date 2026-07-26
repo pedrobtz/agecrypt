@@ -1,0 +1,113 @@
+name: Fuzz
+
+# Coverage-guided fuzzing of the decrypt parsers under ASan+UBSan. Runs a short
+# bounded pass on pushes/PRs that touch the C or fuzz sources, a longer pass on
+# a weekly schedule, and on demand. A crash fails the job and uploads the
+# reproducer.
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'fuzz/**'
+      - '.github/workflows/fuzz.yaml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'fuzz/**'
+      - '.github/workflows/fuzz.yaml'
+  schedule:
+    - cron: '17 4 * * 1' # Mondays
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: 'Seconds to fuzz each target'
+        default: '120'
+
+permissions: read-all
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    env:
+      SECS: ${{ github.event.inputs.seconds || (github.event_name == 'schedule' && '900' || '120') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang (with libFuzzer runtime)
+        run: sudo apt-get update && sudo apt-get install -y clang
+
+      - name: Build fuzz targets
+        run: CC=clang ./fuzz/build.sh
+
+      # Enrich the corpus with the real age test vectors (C2SP CCTV / testkit)
+      # at runtime, so we neither depend on nor redistribute them. C2SP/CCTV is
+      # untagged, so we pin an immutable commit SHA for reproducibility (update
+      # it to refresh the vector set). A fetch failure degrades to the committed
+      # seeds via continue-on-error.
+      - name: Fetch age test vectors (C2SP CCTV, pinned)
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: C2SP/CCTV
+          ref: 1e3d2860d46e94e777e1b17c7a6f2436387e3ecc # 2026-06-05
+          path: cctv
+          persist-credentials: false
+
+      # The vector files are "key: value" metadata, a blank line, then the raw
+      # ciphertext; extract the bodies to use as seeds.
+      - name: Extract CCTV vector bodies
+        continue-on-error: true
+        run: |
+          mkdir -p corpus_cctv
+          python3 - <<'PY'
+          import glob, os
+          n = 0
+          for f in glob.glob("cctv/age/testdata/*"):
+              if not os.path.isfile(f):
+                  continue
+              data = open(f, "rb").read()
+              i = data.find(b"\n\n")
+              if i < 0:
+                  continue
+              body = data[i + 2:]
+              if body:
+                  open(os.path.join("corpus_cctv", os.path.basename(f)), "wb").write(body)
+                  n += 1
+          print(f"extracted {n} CCTV vector bodies")
+          PY
+
+      - name: Fuzz the X25519 decrypt path
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          mkdir -p corpus_decrypt corpus_cctv
+          cp fuzz/seeds/decrypt/* corpus_decrypt/
+          ./fuzz/fuzz_decrypt -dict=fuzz/age.dict -max_len=131072 \
+            -print_final_stats=1 -artifact_prefix=crash-decrypt- \
+            -max_total_time="${SECS}" corpus_decrypt corpus_cctv
+
+      - name: Fuzz the scrypt passphrase path
+        env:
+          # scrypt at the work-factor cap allocates gigabytes, so raise the RSS
+          # limit and per-input timeout rather than flag those as OOMs/hangs.
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1:allocator_may_return_null=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          mkdir -p corpus_pass corpus_cctv
+          cp fuzz/seeds/passphrase/* corpus_pass/
+          ./fuzz/fuzz_passphrase -dict=fuzz/age.dict -max_len=131072 \
+            -rss_limit_mb=6000 -timeout=60 \
+            -print_final_stats=1 -artifact_prefix=crash-pass- \
+            -max_total_time="${SECS}" corpus_pass corpus_cctv
+
+      - name: Upload crash reproducers
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: |
+            crash-decrypt-*
+            crash-pass-*
+          if-no-files-found: ignore

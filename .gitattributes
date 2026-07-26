@@ -1,0 +1,8 @@
+# Test fixtures and fuzz corpora are byte-exact parser inputs: several are
+# binary ciphertext, and the vector parser relies on literal LF (\n) blank-line
+# separators. Mark them binary so git never converts line endings on checkout
+# (e.g. core.autocrlf=true on the Windows CI runner), which would corrupt them
+# and break the fixture-based tests.
+tests/testthat/fixtures/** -text
+fuzz/seeds/**              -text
+*.age                      -text

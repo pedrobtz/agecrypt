@@ -1,0 +1,15 @@
+# OS / editor cruft
+.DS_Store
+.vscode/
+
+# R session data
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Generated pkgdown site (built and deployed by CI, not committed)
+docs/
+
+# Compiled objects and fuzz binaries are ignored by src/.gitignore and
+# fuzz/.gitignore respectively.

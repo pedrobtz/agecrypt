@@ -1,0 +1,31 @@
+# -iquote (not -I) locates the vendored agec headers: they are all included with
+# the quoted form (#include "io.h"), and -iquote adds the directory ONLY for
+# quoted includes. This matters on Windows, where agec ships a header named
+# io.h: with -Iagec on the angle-bracket path, the system <unistd.h>/<fcntl.h>'s
+# internal #include <io.h> would resolve to agec/io.h instead of the real Win32
+# <io.h>, breaking the build. -iquote keeps <...> resolving to system headers.
+PKG_CPPFLAGS = -iquote agec -iquote agec/crypto
+
+OBJECTS = \
+	init.o \
+	binding.o \
+	memio.o \
+	platform.o \
+	fileio.o \
+	agec/agecore.o \
+	agec/base64.o \
+	agec/bech32.o \
+	agec/header.o \
+	agec/io.o \
+	agec/keyenc.o \
+	agec/parse.o \
+	agec/payload.o \
+	agec/scrypt.o \
+	agec/util.o \
+	agec/x25519.o \
+	agec/crypto/chacha20poly1305.o \
+	agec/crypto/curve25519.o \
+	agec/crypto/hkdf.o \
+	agec/crypto/hmac.o \
+	agec/crypto/scrypt.o \
+	agec/crypto/sha256.o
