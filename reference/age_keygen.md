@@ -34,7 +34,7 @@ the secret is never printed.
 id <- age_keygen()
 id
 #> <age_identity>
-#>   public key: age1tnqtzss7cvv6kppktteagxdwhud3e7dvqfa8ljuzlq2dp80lzvnszgv6j7 
+#>   public key: age1emjhl9qkh0c6hnypdv9m22qa5q7wz72y7lw8d9z66dz4k4ffkv7qqn5fg4 
 age_pubkey(id)
-#> [1] "age1tnqtzss7cvv6kppktteagxdwhud3e7dvqfa8ljuzlq2dp80lzvnszgv6j7"
+#> [1] "age1emjhl9qkh0c6hnypdv9m22qa5q7wz72y7lw8d9z66dz4k4ffkv7qqn5fg4"
 ```
