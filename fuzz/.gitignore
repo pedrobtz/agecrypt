@@ -1,6 +1,7 @@
-# built targets and fuzzer output
-fuzz_decrypt*
-fuzz_passphrase*
+# built targets and debug bundles (fuzz_decrypt.c / fuzz_passphrase.c stay tracked)
+fuzz_decrypt
+fuzz_passphrase
+*.dSYM/
 *.o
 crash-*
 leak-*
