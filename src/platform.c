@@ -1,5 +1,6 @@
 #include "common.h"
 #include "util.h"
+#include "platform.h"
 
 #include <errno.h>
 #include <string.h>
@@ -22,6 +23,13 @@ eget(void)
 	if(*ebuf)
 		return ebuf;
 	return strerror(errno);
+}
+
+/* See src/platform.h for why every entry point starts by calling this. */
+void
+eclear(void)
+{
+	ebuf[0] = '\0';
 }
 
 /*

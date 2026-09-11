@@ -143,51 +143,25 @@ as_age_identity <- function(x) {
   if (length(x) == 0L || anyNA(x)) {
     age_abort("identity", "`identities` must not be empty or contain NA")
   }
-  secrets <- collect_secret_strings(x)
-  new_age_identity(age_result(.Call(C_age_c_identity_parse, secrets)))
-}
-
-collect_secret_strings <- function(x) {
-  out <- character()
-  for (el in x) {
-    if (startsWith(el, "AGE-SECRET-KEY-1")) {
-      out <- c(out, el)
-    } else if (file.exists(el)) {
-      out <- c(out, read_keyfile_secrets(el))
-    } else {
-      age_abort(
-        "identity",
-        sprintf(
-          "not an inline secret key or an existing key file: %s",
-          el
-        )
-      )
-    }
-  }
-  if (length(out) == 0L) {
-    age_abort("identity", "no identities found")
-  }
-  out
-}
-
-read_keyfile_secrets <- function(path) {
-  lines <- tryCatch(
-    readLines(path, warn = FALSE),
-    error = function(e) age_abort("io", conditionMessage(e))
-  )
-  lines <- trimws(lines)
-  if (
-    any(startsWith(lines, "-----BEGIN AGE")) ||
-      any(grepl("age-encryption.org/v1", lines, fixed = TRUE))
-  ) {
+  # Classify each element, then let C do the reading. Secrets loaded from a
+  # key file must never become R strings: R interns every string in a global
+  # cache that is effectively never released, so an "AGE-SECRET-KEY-1..." line
+  # read with readLines() would sit in the session's memory in plaintext for
+  # as long as the process lives. Only the *paths* cross into C here.
+  inline <- startsWith(x, "AGE-SECRET-KEY-1")
+  is_file <- !inline & file.exists(x)
+  bad <- which(!inline & !is_file)
+  if (length(bad) > 0L) {
     age_abort(
       "identity",
-      sprintf("passphrase-encrypted key files are not supported: %s", path)
+      sprintf(
+        "not an inline secret key or an existing key file: %s",
+        x[bad[1L]]
+      )
     )
   }
-  keys <- lines[startsWith(lines, "AGE-SECRET-KEY-1")]
-  if (length(keys) == 0L) {
-    age_abort("identity", sprintf("no age identities in key file: %s", path))
-  }
-  keys
+  x[is_file] <- path.expand(x[is_file])
+  new_age_identity(age_result(
+    .Call(C_age_c_identity_parse, x, is_file)
+  ))
 }

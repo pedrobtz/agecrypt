@@ -121,6 +121,12 @@ An `age_identity` is a lightweight S3 object around an opaque external pointer.
 One C-side allocation stores all identities held by the object.
 
 - Secret bytes are not copied into ordinary R vectors.
+- Key files are opened, scanned and scrubbed in C (`age_c_identity_parse()`
+  takes paths, not contents). Reading them in R would intern each
+  `AGE-SECRET-KEY-1...` line in R's global string cache, which is effectively
+  never released, leaving the secret in session memory for the life of the
+  process. Inline secret strings passed by the caller are unavoidably R
+  strings and remain the caller's choice.
 - Decrypting with multiple identities is one native call that loops over
   identities and stanzas in C.
 - `print()` and `format()` derive and show public recipients only.

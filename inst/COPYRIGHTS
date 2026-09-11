@@ -3,8 +3,9 @@ Original work (MIT)
 ================================================================================
 
 The R source and build glue in this package -- src/binding.c, src/init.c,
-src/memio.c, src/platform.c, src/fileio.c, src/agec/agecore.c, src/agec/agecore.h,
-src/agec/agec.h, src/agec/memio.h, src/agec/fileio.h, and everything under R/ --
+src/memio.c, src/platform.c, src/platform.h, src/fileio.c, src/agec/agecore.c,
+src/agec/agecore.h, src/agec/agec.h, src/agec/memio.h, src/agec/fileio.h, and
+everything under R/ --
 are Copyright (c) 2026 Pedro Baltazar and licensed under the MIT licence, as
 stated in DESCRIPTION and LICENSE.
 
@@ -80,6 +81,11 @@ at the site in the source.
       - [in snapshot] renamed the static helper eof() to ateof(): on Windows the
         real <io.h> declares a CRT eof(int) that conflicts. File-local rename
         only.
+      - [pending upstream] incnonce(): increment nonce[0..10] and report a full
+        wrap. Upstream stops the loop at i == 1, so nonce[0] is never touched
+        (a 10-byte counter rather than the 11 the age spec defines) and its
+        `if(i == 0)` overflow guard is unreachable, so a wrap silently reused a
+        nonce. No wire-format change for any reachable payload size.
 
 
 ================================================================================
