@@ -11,7 +11,10 @@ test_that("we decrypt reference-age binary ciphertext (multi-word payload)", {
     readBin(file.path(interop_dir, "big.age"), "raw", 1e6),
     identities = id
   )
-  expect_identical(rawToChar(pt), "The quick brown fox jumps over the lazy dog.\n")
+  expect_identical(
+    rawToChar(pt),
+    "The quick brown fox jumps over the lazy dog.\n"
+  )
 })
 
 test_that("we decrypt reference-age ASCII-armored ciphertext", {
@@ -20,7 +23,10 @@ test_that("we decrypt reference-age ASCII-armored ciphertext", {
     readBin(file.path(interop_dir, "big.age.armor"), "raw", 1e6),
     identities = id
   )
-  expect_identical(rawToChar(pt), "The quick brown fox jumps over the lazy dog.\n")
+  expect_identical(
+    rawToChar(pt),
+    "The quick brown fox jumps over the lazy dog.\n"
+  )
 })
 
 test_that("we decrypt a reference-age ciphertext of a sub-probe-size input", {

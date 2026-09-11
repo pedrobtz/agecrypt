@@ -55,5 +55,8 @@ test_that("tampering with the header fails authentication", {
   # flip a byte inside the header, well before the binary payload
   bad <- ct
   bad[30] <- as.raw(bitwXor(as.integer(bad[30]), 0xffL))
-  expect_error(age_decrypt_raw(bad, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_raw(bad, identities = p$id),
+    class = "age_error_decrypt"
+  )
 })

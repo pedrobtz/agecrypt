@@ -3,9 +3,7 @@
 # on failure, and no leftover temp files.
 
 temp_siblings <- function(path) {
-  list.files(dirname(path),
-    pattern = "\\.age-[0-9a-f]{16}$", full.names = TRUE
-  )
+  list.files(dirname(path), pattern = "\\.age-[0-9a-f]{16}$", full.names = TRUE)
 }
 
 test_that("generated key files are not world/group readable", {
@@ -30,8 +28,12 @@ test_that("file APIs reject output identical to input", {
   withr::with_dir(dirname(f), {
     base <- basename(f)
     expect_error(
-      age_encrypt_file(base, output = file.path(".", base),
-        recipients = p$rec, overwrite = TRUE),
+      age_encrypt_file(
+        base,
+        output = file.path(".", base),
+        recipients = p$rec,
+        overwrite = TRUE
+      ),
       class = "age_error_io"
     )
   })
@@ -67,7 +69,10 @@ test_that("a failed decryption preserves a pre-existing destination", {
     class = "age_error_decrypt"
   )
   expect_true(file.exists(out))
-  expect_identical(readBin(out, "raw", 100), charToRaw("PRE-EXISTING DESTINATION"))
+  expect_identical(
+    readBin(out, "raw", 100),
+    charToRaw("PRE-EXISTING DESTINATION")
+  )
   expect_length(temp_siblings(out), 0L) # no leftover temp file
 })
 
@@ -80,7 +85,12 @@ test_that("a failed encryption preserves a pre-existing destination", {
 
   # a malformed recipient fails before any output is produced
   expect_error(
-    age_encrypt_file(f, output = out, recipients = "age1nope", overwrite = TRUE),
+    age_encrypt_file(
+      f,
+      output = out,
+      recipients = "age1nope",
+      overwrite = TRUE
+    ),
     class = "age_error_recipient"
   )
   expect_identical(readBin(out, "raw", 100), charToRaw("KEEP ME"))
@@ -94,7 +104,11 @@ test_that("successful overwrite replaces the destination and leaves no temp", {
   writeBin(charToRaw("stale ciphertext"), out)
 
   age_encrypt_file(f, output = out, recipients = p$rec, overwrite = TRUE)
-  dec <- age_decrypt_file(out, output = withr::local_tempfile(), identities = p$id)
+  dec <- age_decrypt_file(
+    out,
+    output = withr::local_tempfile(),
+    identities = p$id
+  )
   expect_identical(readBin(dec, "raw", 100), charToRaw("v2 contents"))
   expect_length(temp_siblings(out), 0L)
 })
@@ -111,23 +125,33 @@ test_that("native write refuses to clobber for overwrite = FALSE (no TOCTOU race
 
   status <- .Call(
     agecrypt:::C_age_c_encrypt_path,
-    normalizePath(f), normalizePath(out), p$rec, FALSE, FALSE
+    normalizePath(f),
+    normalizePath(out),
+    p$rec,
+    FALSE,
+    FALSE
   )
   expect_false(identical(status[[1L]], "")) # errored, did not clobber
   expect_match(status[[2L]], "exists")
   expect_identical(
-    readBin(out, "raw", 100), charToRaw("PRE-EXISTING DESTINATION")
+    readBin(out, "raw", 100),
+    charToRaw("PRE-EXISTING DESTINATION")
   )
   expect_length(temp_siblings(out), 0L)
 
   # overwrite = TRUE replaces atomically
   status2 <- .Call(
     agecrypt:::C_age_c_encrypt_path,
-    normalizePath(f), normalizePath(out), p$rec, FALSE, TRUE
+    normalizePath(f),
+    normalizePath(out),
+    p$rec,
+    FALSE,
+    TRUE
   )
   expect_identical(status2[[1L]], "")
   expect_identical(
-    rawToChar(age_decrypt_raw(readBin(out, "raw", 1e5), p$id)), "plaintext"
+    rawToChar(age_decrypt_raw(readBin(out, "raw", 1e5), p$id)),
+    "plaintext"
   )
 })
 
@@ -140,7 +164,11 @@ test_that("encrypting a file over itself is safe once distinctness is bypassed",
 
   status <- .Call(
     agecrypt:::C_age_c_encrypt_path,
-    normalizePath(f), normalizePath(f), p$rec, FALSE, TRUE
+    normalizePath(f),
+    normalizePath(f),
+    p$rec,
+    FALSE,
+    TRUE
   )
   expect_identical(status[[1L]], "") # success
   # f now holds its own ciphertext, which decrypts back to the original

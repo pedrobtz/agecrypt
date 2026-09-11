@@ -16,7 +16,9 @@ read_vector <- function(path) {
   body <- if (idx + 2L <= length(raw)) raw[(idx + 2L):length(raw)] else raw[0]
   kv <- list()
   for (ln in strsplit(meta_txt, "\n", fixed = TRUE)[[1]]) {
-    if (!grepl(": ", ln, fixed = TRUE)) next
+    if (!grepl(": ", ln, fixed = TRUE)) {
+      next
+    }
     k <- sub(": .*", "", ln)
     kv[[k]] <- sub("^[^:]*: ", "", ln)
   }

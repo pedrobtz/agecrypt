@@ -48,11 +48,13 @@ this package's own src/platform.c and src/fileio.c instead.
 Local modifications to the vendored agec sources
 ------------------------------------------------
 
-These fall into two groups. The four fixes marked [in snapshot] are already
+These fall into three groups. The four fixes marked [in snapshot] are already
 committed in the vendored snapshot (tag vendor-2026-07-09) and are upstreamable
 (they live on the agec fork's fix/* branches). The two marked [package-only] are
-applied to src/agec/ in this package on top of that snapshot. Each change is also
-marked with a comment at the site in the source.
+applied to src/agec/ in this package on top of that snapshot. The one marked
+[pending upstream] is a bug fix applied here ahead of being pushed to the agec
+fork and re-vendored under a new tag. Each change is also marked with a comment
+at the site in the source.
 
   * src/agec/io.c
       - [in snapshot] bread()/bpeek(): only report EOF once the bytes buffered
@@ -63,6 +65,10 @@ marked with a comment at the site in the source.
         (src/memio.c) as well as file descriptors.
       - [in snapshot] recappend(): realloc() into a temporary pointer to avoid
         leaking / then wiping a NULL buffer on allocation failure.
+      - [pending upstream] bwrite(): flush b->cur + c bytes, not b->cur, when an
+        incoming write fills the 8 KiB buffer. Upstream drops the c bytes just
+        copied into buf[cur .. IOBUFSIZE), silently truncating output whenever a
+        write lands exactly on the buffer boundary. Bug fix (data loss).
   * src/agec/header.c
       - [in snapshot] hdrappend(): realloc() into a temporary pointer (same
         fix); va_end() moved so it is not skipped on error returns.

@@ -31,7 +31,9 @@ vdirs <- c("dev/agec/test/vectors/dec", "dev/agec/test/vectors/dec-extra")
 files <- unlist(lapply(vdirs, list.files, full.names = TRUE))
 for (f in files) {
   v <- vector_parts(f)
-  if (!length(v$body)) next
+  if (!length(v$body)) {
+    next
+  }
   if (has_key(v$meta, "passphrase:")) {
     writeBin(v$body, file.path(pw_dir, paste0("cctv_", basename(f))))
   } else if (has_key(v$meta, "identity:")) {
@@ -44,14 +46,22 @@ secret <- "AGE-SECRET-KEY-1XMWWC06LY3EE5RYTXM9MFLAZ2U56JJJ36S0MYPDRWSVLUL66MV4QX
 rec <- age_pubkey(age_identity(secret))
 for (n in c(0L, 1L, 200L, 70000L)) {
   msg <- as.raw(rep(65L, n))
-  writeBin(age_encrypt_raw(msg, rec), file.path(dec_dir, sprintf("gen_bin_%d", n)))
-  writeBin(age_encrypt_raw(msg, rec, armor = TRUE), file.path(dec_dir, sprintf("gen_arm_%d", n)))
+  writeBin(
+    age_encrypt_raw(msg, rec),
+    file.path(dec_dir, sprintf("gen_bin_%d", n))
+  )
+  writeBin(
+    age_encrypt_raw(msg, rec, armor = TRUE),
+    file.path(dec_dir, sprintf("gen_arm_%d", n))
+  )
 }
 # authentic passphrase seeds ("password", as the CCTV scrypt vectors use)
 for (n in c(0L, 200L)) {
   msg <- as.raw(rep(66L, n))
-  writeBin(age_encrypt_raw_passphrase(msg, passphrase = "password", log_n = 10),
-    file.path(pw_dir, sprintf("gen_pw_%d", n)))
+  writeBin(
+    age_encrypt_raw_passphrase(msg, passphrase = "password", log_n = 10),
+    file.path(pw_dir, sprintf("gen_pw_%d", n))
+  )
 }
 
 cat(sprintf("decrypt corpus:    %d files\n", length(list.files(dec_dir))))

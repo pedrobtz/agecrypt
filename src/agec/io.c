@@ -41,7 +41,14 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 		b->cur += nbytes;
 		return 0;
 	} else {
-		ret = writeall(b->fd, b->buf.buf, b->cur);
+		/*
+		 * Divergence from upstream agec: flush b->cur + c (== IOBUFSIZE),
+		 * not b->cur. The memcpy above just filled buf[cur .. IOBUFSIZE)
+		 * with the first c bytes of this write; writing only b->cur drops
+		 * them, silently truncating output whenever a write lands exactly
+		 * on the buffer boundary.
+		 */
+		ret = writeall(b->fd, b->buf.buf, b->cur + c);
 		if(ret == -1)
 			return -1;
 		memcpy(b->buf.buf, (uchar *)buf + rest, nbytes - rest);
