@@ -13,6 +13,8 @@ Description: An idiomatic R interface to the 'age' file encryption format
     or with a passphrase, with optional ASCII armor. Cryptography is vendored
     and randomness is drawn from the operating system, so the package has no
     external library dependencies.
+Depends:
+    R (>= 3.5.0)
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

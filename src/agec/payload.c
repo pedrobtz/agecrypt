@@ -71,19 +71,26 @@ ateof(Ibuf *b)
 		return 0;
 }
 
+/*
+ * Divergence from upstream agec: the counter spans nonce[0..10], and a full
+ * wrap is reported. Upstream loops `for(i = 10; i > 0; i--)`, so nonce[0] is
+ * never incremented (a 10-byte counter, not the 11 the age spec defines) and
+ * its `if(i == 0)` overflow check sits inside a loop that stops at i == 1,
+ * making it unreachable -- a wrap returned success and silently reused a
+ * nonce. No wire-format change: nonce[0] only ever becomes non-zero after
+ * 2^80 chunks, which no reachable payload approaches.
+ */
 static const char *
 incnonce(uchar nonce[12])
 {
 	int i;
 
-	for(i = 10; i > 0; i--) {
+	for(i = 10; i >= 0; i--) {
 		nonce[i]++;
 		if(nonce[i] != 0)
-			break;
-		if(i == 0)
-			return "payload is too long; chunk counter wrapped";
+			return NULL;
 	}
-	return NULL;
+	return "payload is too long; chunk counter wrapped";
 }
 
 static usize
