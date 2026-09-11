@@ -4,8 +4,10 @@ Review of the R↔C boundary (`src/binding.c`, `src/init.c`, `src/memio.c`,
 `src/fileio.c`, `src/platform.c`) and the vendored `agec` code those entry
 points drive. Findings below are ordered by severity.
 
-Status key: **[fixed]** applied in the working tree · **[open]** reported only,
-no code changed.
+Status: **all eight findings are fixed** on `fix/binding-soundness`. Finding 1
+landed first (commit `8746110`); findings 2-8 followed in the hardening pass.
+The only outstanding work is upstreaming the two vendored-code fixes, tracked
+in the checklist under finding 1 and finding 8.
 
 ---
 
@@ -97,7 +99,7 @@ in this tree:
 
 ---
 
-## 2. [open] Stale error messages from the shared `ebuf`
+## 2. [fixed] Stale error messages from the shared `ebuf`
 
 **Where:** `src/platform.c`, `eget()`
 
@@ -128,7 +130,7 @@ Suggested fix: clear `ebuf` at the start of each native entry point, or have
 
 ---
 
-## 3. [open] memfd slot leak if R longjmps out mid-call
+## 3. [fixed] memfd slot leak if R longjmps out mid-call
 
 **Where:** `src/binding.c`, the four raw entry points
 
@@ -152,7 +154,7 @@ vector before opening the streams.
 
 ---
 
-## 4. [open] `recs` leaks if `RAW(data)` longjmps
+## 4. [fixed] `recs` leaks if `RAW(data)` longjmps
 
 **Where:** `src/binding.c`, `age_c_encrypt()` and `age_c_encrypt_path()`
 
@@ -166,7 +168,7 @@ through the internal symbols all produced clean R errors.
 
 ---
 
-## 5. [open] Secret not scrubbed on one error path
+## 5. [fixed] Secret not scrubbed on one error path
 
 **Where:** `src/binding.c`, `age_c_identity_parse()`
 
@@ -191,7 +193,7 @@ Suggested fix: `wipe(bech, sizeof(bech));` before that `return`.
 
 ---
 
-## 6. [open] Secrets pass through R's immortal string cache
+## 6. [fixed] Secrets pass through R's immortal string cache
 
 **Where:** `R/identity.R`, `collect_secret_strings()` / `read_keyfile_secrets()`
 
@@ -215,7 +217,7 @@ Options, in increasing order of effort:
 
 ---
 
-## 7. [open] `1 << factor` UB for out-of-range `log_n`
+## 7. [fixed] `1 << factor` UB for out-of-range `log_n`
 
 **Where:** `src/agec/scrypt.c`, `wrapkey()`
 
@@ -238,7 +240,7 @@ Suggested fix: validate `cost` in C as well as in R.
 
 ---
 
-## 8. [open] Dead code in `incnonce()`
+## 8. [fixed] Dead code in `incnonce()`
 
 **Where:** `src/agec/payload.c`
 
@@ -256,6 +258,30 @@ Two issues: the wrap check can never fire, so overflow returns success
 silently; and `nonce[0]` is never incremented, making the counter 10 bytes
 rather than the age spec's 11. Unreachable in practice (~2^96 bytes of
 payload), so cosmetic — but the guard does not do what it says.
+
+---
+
+## How each was fixed
+
+| # | Fix | Where |
+|---|---|---|
+| 2 | `eclear()` resets the shared buffer at every entry point, making it genuinely operation-local. | `src/platform.{c,h}`, `src/binding.c` |
+| 3 | `R_UnwindProtect` runs the memfd/Ibuf/Obuf teardown even when the result allocation unwinds. | `src/binding.c` (`mem_finish`) |
+| 4 | `RAW()`/`CHAR()` are evaluated before anything is malloc'd, and `parse_recipients()` type-checks up front. | `src/binding.c` |
+| 5 | `keybuf_push()` wipes its stack buffer on every path, success or failure. | `src/binding.c` |
+| 6 | Key files are opened, scanned and scrubbed in C; only *paths* cross into the native layer. | `src/binding.c`, `R/identity.R` |
+| 7 | `check_cost()` bounds the work factor to 2..22 in C, matching the R check and the decrypt-side guard. | `src/binding.c` |
+| 8 | `incnonce()` spans `nonce[0..10]` and reports a wrap instead of silently reusing a nonce. | `src/agec/payload.c` |
+
+Finding 8 is a second vendored-code divergence, so it carries the same
+upstreaming obligation as finding 1:
+
+- [ ] Push the `incnonce()` fix to the agec fork alongside `bwrite()`.
+- [ ] Re-vendor both under one new tag and flip both `inst/COPYRIGHTS`
+      entries from `[pending upstream]` to `[in snapshot]`.
+
+`R_UnwindProtect` is an R 3.5.0 API, so `DESCRIPTION` now declares
+`Depends: R (>= 3.5.0)`.
 
 ---
 
@@ -319,4 +345,8 @@ where `rt.c` drives `age_encipher`/`age_decipher` over `memopen_read`/
 
 - `air` is not on `PATH` in this environment, so new test code is hand-matched
   to surrounding style rather than formatter-verified. Worth running
-  `air format .` before committing.
+  `air format .` before merging.
+- Coverage after the hardening pass: 321 tests, `R CMD check` clean
+  (0 errors / 0 warnings / 0 notes). The new C key-file reader was additionally
+  fuzzed with 4000 hostile files (truncated keys, random bytes, embedded NULs,
+  CRLF, oversized, no trailing newline) with no unhandled error.
