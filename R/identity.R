@@ -33,13 +33,21 @@ age_keygen <- function(path = NULL, overwrite = FALSE) {
     path <- check_path(path, "path")
     overwrite <- check_flag(overwrite, "overwrite", status = "io")
     if (!overwrite && file.exists(path)) {
-      age_abort("io", sprintf(
-        "file already exists: %s (pass overwrite = TRUE to replace it)", path
-      ))
+      age_abort(
+        "io",
+        sprintf(
+          "file already exists: %s (pass overwrite = TRUE to replace it)",
+          path
+        )
+      )
     }
     created <- format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
     age_result(.Call(
-      C_age_c_identity_write, ptr, path.expand(path), created, overwrite
+      C_age_c_identity_write,
+      ptr,
+      path.expand(path),
+      created,
+      overwrite
     ))
     return(invisible(id))
   }
@@ -107,7 +115,9 @@ print.age_identity <- function(x, ...) {
   if (length(keys) == 0) {
     cat("  (freed)\n")
   } else {
-    for (k in keys) cat("  public key:", k, "\n")
+    for (k in keys) {
+      cat("  public key:", k, "\n")
+    }
   }
   invisible(x)
 }
@@ -145,9 +155,13 @@ collect_secret_strings <- function(x) {
     } else if (file.exists(el)) {
       out <- c(out, read_keyfile_secrets(el))
     } else {
-      age_abort("identity", sprintf(
-        "not an inline secret key or an existing key file: %s", el
-      ))
+      age_abort(
+        "identity",
+        sprintf(
+          "not an inline secret key or an existing key file: %s",
+          el
+        )
+      )
     }
   }
   if (length(out) == 0L) {
@@ -162,8 +176,10 @@ read_keyfile_secrets <- function(path) {
     error = function(e) age_abort("io", conditionMessage(e))
   )
   lines <- trimws(lines)
-  if (any(startsWith(lines, "-----BEGIN AGE")) ||
-    any(grepl("age-encryption.org/v1", lines, fixed = TRUE))) {
+  if (
+    any(startsWith(lines, "-----BEGIN AGE")) ||
+      any(grepl("age-encryption.org/v1", lines, fixed = TRUE))
+  ) {
     age_abort(
       "identity",
       sprintf("passphrase-encrypted key files are not supported: %s", path)

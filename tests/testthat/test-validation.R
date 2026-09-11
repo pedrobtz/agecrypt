@@ -29,10 +29,19 @@ test_that("age_encrypt_raw / age_decrypt_raw reject wrong input types", {
     class = "age_error_encrypt"
   )
   # x must be raw or character
-  expect_error(age_decrypt_raw(42L, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_raw(42L, identities = p$id),
+    class = "age_error_decrypt"
+  )
   # empty / NA character
-  expect_error(age_decrypt_raw(character(0), identities = p$id), class = "age_error_decrypt")
-  expect_error(age_decrypt_raw(NA_character_, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_raw(character(0), identities = p$id),
+    class = "age_error_decrypt"
+  )
+  expect_error(
+    age_decrypt_raw(NA_character_, identities = p$id),
+    class = "age_error_decrypt"
+  )
 })
 
 test_that("recipient and identity coercion reject bad shapes", {
@@ -44,9 +53,18 @@ test_that("recipient and identity coercion reject bad shapes", {
     class = "age_error_recipient"
   )
   # as_age_identity(): non-character, empty, NA
-  expect_error(age_decrypt_raw(ct, identities = 42L), class = "age_error_identity")
-  expect_error(age_decrypt_raw(ct, identities = character(0)), class = "age_error_identity")
-  expect_error(age_decrypt_raw(ct, identities = NA_character_), class = "age_error_identity")
+  expect_error(
+    age_decrypt_raw(ct, identities = 42L),
+    class = "age_error_identity"
+  )
+  expect_error(
+    age_decrypt_raw(ct, identities = character(0)),
+    class = "age_error_identity"
+  )
+  expect_error(
+    age_decrypt_raw(ct, identities = NA_character_),
+    class = "age_error_identity"
+  )
   # collect_secret_strings(): neither an inline key nor an existing file
   expect_error(age_identity("just some words"), class = "age_error_identity")
 })
@@ -55,7 +73,11 @@ test_that("key-file parsing rejects passphrase-encrypted and empty files", {
   # passphrase-encrypted key file is detected and refused
   enc <- withr::local_tempfile()
   writeLines(
-    c("-----BEGIN AGE ENCRYPTED FILE-----", "abc", "-----END AGE ENCRYPTED FILE-----"),
+    c(
+      "-----BEGIN AGE ENCRYPTED FILE-----",
+      "abc",
+      "-----END AGE ENCRYPTED FILE-----"
+    ),
     enc
   )
   expect_error(age_identity(enc), class = "age_error_identity")
@@ -81,5 +103,8 @@ test_that("identity methods: format, print-when-freed, free type check", {
   age_identity_free(id)
   expect_output(print(id), "freed")
   # age_identity_free() type check
-  expect_error(age_identity_free("not an identity"), class = "age_error_identity")
+  expect_error(
+    age_identity_free("not an identity"),
+    class = "age_error_identity"
+  )
 })

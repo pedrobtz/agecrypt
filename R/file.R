@@ -28,8 +28,13 @@ NULL
 
 #' @rdname age_file
 #' @export
-age_encrypt_file <- function(input, output = NULL, recipients,
-                             armor = FALSE, overwrite = FALSE) {
+age_encrypt_file <- function(
+  input,
+  output = NULL,
+  recipients,
+  armor = FALSE,
+  overwrite = FALSE
+) {
   input <- check_path(input, "input")
   if (!file.exists(input)) {
     age_abort("io", sprintf("input file does not exist: %s", input))
@@ -45,15 +50,23 @@ age_encrypt_file <- function(input, output = NULL, recipients,
   recipients <- as_recipients(recipients)
   age_result(.Call(
     C_age_c_encrypt_path,
-    path.expand(input), path.expand(output), recipients, armor, overwrite
+    path.expand(input),
+    path.expand(output),
+    recipients,
+    armor,
+    overwrite
   ))
   invisible(output)
 }
 
 #' @rdname age_file
 #' @export
-age_decrypt_file <- function(input, output = NULL, identities,
-                             overwrite = FALSE) {
+age_decrypt_file <- function(
+  input,
+  output = NULL,
+  identities,
+  overwrite = FALSE
+) {
   input <- check_path(input, "input")
   if (!file.exists(input)) {
     age_abort("io", sprintf("input file does not exist: %s", input))
@@ -61,10 +74,13 @@ age_decrypt_file <- function(input, output = NULL, identities,
   if (is.null(output)) {
     output <- sub("[.]age$", "", input)
     if (identical(output, input)) {
-      age_abort("io", paste(
-        "cannot infer output path: input does not end in .age;",
-        "pass `output` explicitly"
-      ))
+      age_abort(
+        "io",
+        paste(
+          "cannot infer output path: input does not end in .age;",
+          "pass `output` explicitly"
+        )
+      )
     }
   }
   output <- check_path(output, "output")
@@ -74,16 +90,23 @@ age_decrypt_file <- function(input, output = NULL, identities,
   id <- as_age_identity(identities)
   age_result(.Call(
     C_age_c_decrypt_path,
-    path.expand(input), path.expand(output), id, overwrite
+    path.expand(input),
+    path.expand(output),
+    id,
+    overwrite
   ))
   invisible(output)
 }
 
 guard_output <- function(output, overwrite) {
   if (!overwrite && file.exists(output)) {
-    age_abort("io", sprintf(
-      "output already exists: %s (pass overwrite = TRUE to replace it)", output
-    ))
+    age_abort(
+      "io",
+      sprintf(
+        "output already exists: %s (pass overwrite = TRUE to replace it)",
+        output
+      )
+    )
   }
 }
 

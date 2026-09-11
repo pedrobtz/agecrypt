@@ -13,9 +13,9 @@
 suppressWarnings(pkgload::load_all(quiet = TRUE)) # our package, for the encrypt-direction check
 
 age_bin <- unname(Sys.which("age"))
-kg_bin  <- unname(Sys.which("age-keygen"))
+kg_bin <- unname(Sys.which("age-keygen"))
 stopifnot(
-  "age not on PATH"        = nzchar(age_bin),
+  "age not on PATH" = nzchar(age_bin),
   "age-keygen not on PATH" = nzchar(kg_bin)
 )
 
@@ -24,17 +24,32 @@ stopifnot(
 run <- function(cmd, args) {
   st <- system2(cmd, args, stdout = FALSE, stderr = FALSE)
   if (!identical(as.integer(st), 0L)) {
-    stop(sprintf("oracle failed (exit %s): %s %s", st, cmd,
-      paste(args, collapse = " ")), call. = FALSE)
+    stop(
+      sprintf(
+        "oracle failed (exit %s): %s %s",
+        st,
+        cmd,
+        paste(args, collapse = " ")
+      ),
+      call. = FALSE
+    )
   }
   invisible()
 }
-capture <- function(cmd, args) { # capture stdout, still assert a clean exit
+capture <- function(cmd, args) {
+  # capture stdout, still assert a clean exit
   out <- suppressWarnings(system2(cmd, args, stdout = TRUE))
   st <- attr(out, "status")
   if (!is.null(st) && !identical(as.integer(st), 0L)) {
-    stop(sprintf("oracle failed (exit %s): %s %s", st, cmd,
-      paste(args, collapse = " ")), call. = FALSE)
+    stop(
+      sprintf(
+        "oracle failed (exit %s): %s %s",
+        st,
+        cmd,
+        paste(args, collapse = " ")
+      ),
+      call. = FALSE
+    )
   }
   out
 }
@@ -80,12 +95,18 @@ for (n in sizes) {
     writeBin(ct, cf)
     back <- capture(age_bin, c("-d", "-i", key, cf))
     if (!identical(paste(back, collapse = "\n"), msg)) {
-      stop(sprintf("encrypt-direction interop FAILED (n=%d armor=%s)", n, armor),
-        call. = FALSE)
+      stop(
+        sprintf("encrypt-direction interop FAILED (n=%d armor=%s)", n, armor),
+        call. = FALSE
+      )
     }
     enc <- enc + 1L
   }
 }
 ver <- sub("^v", "", capture(age_bin, "--version")[1])
-cat(sprintf("encrypt-direction: %d/%d checks passed against reference age v%s\n",
-  enc, enc, ver))
+cat(sprintf(
+  "encrypt-direction: %d/%d checks passed against reference age v%s\n",
+  enc,
+  enc,
+  ver
+))

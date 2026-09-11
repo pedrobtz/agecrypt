@@ -37,8 +37,12 @@ NULL
 
 #' @rdname age_passphrase
 #' @export
-age_encrypt_raw_passphrase <- function(x, passphrase = NULL, armor = FALSE,
-                                       log_n = 18) {
+age_encrypt_raw_passphrase <- function(
+  x,
+  passphrase = NULL,
+  armor = FALSE,
+  log_n = 18
+) {
   if (!is.raw(x)) {
     age_abort("encrypt", "`x` must be a raw vector")
   }
@@ -58,9 +62,14 @@ age_decrypt_raw_passphrase <- function(x, passphrase = NULL) {
 
 #' @rdname age_passphrase
 #' @export
-age_encrypt_file_passphrase <- function(input, output = NULL, passphrase = NULL,
-                                        armor = FALSE, overwrite = FALSE,
-                                        log_n = 18) {
+age_encrypt_file_passphrase <- function(
+  input,
+  output = NULL,
+  passphrase = NULL,
+  armor = FALSE,
+  overwrite = FALSE,
+  log_n = 18
+) {
   input <- check_path(input, "input")
   if (!file.exists(input)) {
     age_abort("io", sprintf("input file does not exist: %s", input))
@@ -77,15 +86,24 @@ age_encrypt_file_passphrase <- function(input, output = NULL, passphrase = NULL,
   pass <- resolve_passphrase(passphrase, encrypt = TRUE)
   age_result(.Call(
     C_age_c_encrypt_path_passphrase,
-    path.expand(input), path.expand(output), pass, armor, log_n, overwrite
+    path.expand(input),
+    path.expand(output),
+    pass,
+    armor,
+    log_n,
+    overwrite
   ))
   invisible(output)
 }
 
 #' @rdname age_passphrase
 #' @export
-age_decrypt_file_passphrase <- function(input, output = NULL, passphrase = NULL,
-                                        overwrite = FALSE) {
+age_decrypt_file_passphrase <- function(
+  input,
+  output = NULL,
+  passphrase = NULL,
+  overwrite = FALSE
+) {
   input <- check_path(input, "input")
   if (!file.exists(input)) {
     age_abort("io", sprintf("input file does not exist: %s", input))
@@ -93,10 +111,13 @@ age_decrypt_file_passphrase <- function(input, output = NULL, passphrase = NULL,
   if (is.null(output)) {
     output <- sub("[.]age$", "", input)
     if (identical(output, input)) {
-      age_abort("io", paste(
-        "cannot infer output path: input does not end in .age;",
-        "pass `output` explicitly"
-      ))
+      age_abort(
+        "io",
+        paste(
+          "cannot infer output path: input does not end in .age;",
+          "pass `output` explicitly"
+        )
+      )
     }
   }
   output <- check_path(output, "output")
@@ -106,7 +127,10 @@ age_decrypt_file_passphrase <- function(input, output = NULL, passphrase = NULL,
   pass <- resolve_passphrase(passphrase, encrypt = FALSE)
   age_result(.Call(
     C_age_c_decrypt_path_passphrase,
-    path.expand(input), path.expand(output), pass, overwrite
+    path.expand(input),
+    path.expand(output),
+    pass,
+    overwrite
   ))
   invisible(output)
 }
@@ -119,21 +143,33 @@ resolve_passphrase <- function(passphrase, encrypt) {
   status <- if (encrypt) "encrypt" else "decrypt"
   if (is.null(passphrase)) {
     if (!interactive()) {
-      age_abort(status, "`passphrase` is NULL but the session is not interactive")
+      age_abort(
+        status,
+        "`passphrase` is NULL but the session is not interactive"
+      )
     }
     if (!requireNamespace("askpass", quietly = TRUE)) {
-      age_abort(status, paste(
-        "`passphrase` is NULL and the 'askpass' package is not installed;",
-        "install it or pass `passphrase` explicitly"
-      ))
+      age_abort(
+        status,
+        paste(
+          "`passphrase` is NULL and the 'askpass' package is not installed;",
+          "install it or pass `passphrase` explicitly"
+        )
+      )
     }
-    prompt <- if (encrypt) "Enter passphrase to encrypt: " else "Enter passphrase: "
+    prompt <- if (encrypt) {
+      "Enter passphrase to encrypt: "
+    } else {
+      "Enter passphrase: "
+    }
     passphrase <- askpass::askpass(prompt)
     if (is.null(passphrase)) {
       age_abort(status, "no passphrase supplied")
     }
   }
-  if (!is.character(passphrase) || length(passphrase) != 1L || is.na(passphrase)) {
+  if (
+    !is.character(passphrase) || length(passphrase) != 1L || is.na(passphrase)
+  ) {
     age_abort(status, "`passphrase` must be a single string")
   }
   if (!nzchar(passphrase)) {
@@ -143,8 +179,12 @@ resolve_passphrase <- function(passphrase, encrypt) {
 }
 
 check_log_n <- function(log_n) {
-  if (length(log_n) != 1L || is.na(log_n) ||
-    !is.numeric(log_n) || log_n != as.integer(log_n)) {
+  if (
+    length(log_n) != 1L ||
+      is.na(log_n) ||
+      !is.numeric(log_n) ||
+      log_n != as.integer(log_n)
+  ) {
     age_abort("encrypt", "`log_n` must be a single whole number")
   }
   log_n <- as.integer(log_n)

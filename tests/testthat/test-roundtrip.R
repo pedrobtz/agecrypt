@@ -10,8 +10,11 @@ test_that("raw round-trips for empty, tiny, and multi-chunk payloads", {
 
 test_that("armored output is PEM and returns raw, round-trips", {
   p <- new_pair()
-  ct <- age_encrypt_raw(charToRaw("armored secret"), recipients = p$rec,
-                        armor = TRUE)
+  ct <- age_encrypt_raw(
+    charToRaw("armored secret"),
+    recipients = p$rec,
+    armor = TRUE
+  )
   expect_type(ct, "raw")
   expect_match(rawToChar(ct), "^-----BEGIN AGE ENCRYPTED FILE-----")
   expect_identical(
@@ -45,10 +48,16 @@ test_that("age_decrypt_text rejects binary / non-UTF-8 payloads", {
   p <- new_pair()
   # embedded NUL
   ct1 <- age_encrypt_raw(as.raw(c(1, 0, 2)), recipients = p$rec)
-  expect_error(age_decrypt_text(ct1, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_text(ct1, identities = p$id),
+    class = "age_error_decrypt"
+  )
   # invalid UTF-8 byte sequence
   ct2 <- age_encrypt_raw(as.raw(c(0xff, 0xfe, 0x41)), recipients = p$rec)
-  expect_error(age_decrypt_text(ct2, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_text(ct2, identities = p$id),
+    class = "age_error_decrypt"
+  )
 })
 
 test_that("file round-trip with default suffixes", {
@@ -57,8 +66,11 @@ test_that("file round-trip with default suffixes", {
   writeBin(charToRaw("file contents here"), f)
   enc <- age_encrypt_file(f, recipients = p$rec)
   expect_identical(enc, paste0(f, ".age"))
-  dec <- age_decrypt_file(enc, output = withr::local_tempfile(),
-                          identities = p$id)
+  dec <- age_decrypt_file(
+    enc,
+    output = withr::local_tempfile(),
+    identities = p$id
+  )
   expect_identical(readBin(dec, "raw", 100), charToRaw("file contents here"))
 })
 
@@ -87,4 +99,45 @@ test_that("decrypt scans a multi-identity set for a match", {
     rawToChar(age_decrypt_raw(ct, identities = ids)),
     "for the second key"
   )
+})
+
+# Regression: bwrite() in src/agec/io.c truncated its output when a write
+# landed exactly on the 8 KiB Obuf boundary. On encrypt this silently produced
+# a short, undecryptable ciphertext; on decrypt it silently returned a short
+# plaintext with no error at all. Both are data loss, so sweep the boundary.
+test_that("round-trips across the 8 KiB output-buffer boundary", {
+  p <- new_pair()
+  # encrypt side: header + payload nonce + final chunk crossing IOBUFSIZE
+  for (n in c(7990L, 7992L, 8000L, 8176L, 8191L, 8192L, 8193L, 8208L)) {
+    pt <- as.raw(rep.int(65L, n))
+    ct <- age_encrypt_raw(pt, recipients = p$rec)
+    expect_identical(
+      age_decrypt_raw(ct, identities = p$id),
+      pt,
+      info = paste("binary n =", n)
+    )
+  }
+  # decrypt side: a final STREAM chunk decrypting to exactly IOBUFSIZE bytes
+  for (n in c(65536L + 8191L, 65536L + 8192L, 65536L + 8193L)) {
+    pt <- as.raw(rep.int(66L, n))
+    ct <- age_encrypt_raw(pt, recipients = p$rec)
+    expect_identical(
+      age_decrypt_raw(ct, identities = p$id),
+      pt,
+      info = paste("multi-chunk n =", n)
+    )
+  }
+})
+
+test_that("armored round-trips across the output-buffer boundaries", {
+  p <- new_pair()
+  for (n in c(8192L, 12287L, 12288L, 12289L, 65536L + 8192L)) {
+    pt <- as.raw(rep.int(67L, n))
+    ct <- age_encrypt_raw(pt, recipients = p$rec, armor = TRUE)
+    expect_identical(
+      age_decrypt_raw(ct, identities = p$id),
+      pt,
+      info = paste("armored n =", n)
+    )
+  }
 })
