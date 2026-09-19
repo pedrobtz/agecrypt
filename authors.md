@@ -11,7 +11,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedrobtz/agecrypt/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedrobtz/agecrypt/blob/0.1.0/DESCRIPTION)
 
 Baltazar P (2026). *agecrypt: File Encryption with the 'age' Format*. R
 package version 0.1.0, <https://github.com/pedrobtz/agecrypt>.
