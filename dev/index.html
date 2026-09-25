@@ -57,13 +57,13 @@
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Install the development version from GitHub:</p>
+<p>Install the released version from CRAN:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"agecrypt"</span><span class="op">)</span></span></code></pre></div>
+<p>Or the development version from GitHub:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
 <span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"pedrobtz/agecrypt"</span><span class="op">)</span></span></code></pre></div>
-<p>Once released on CRAN:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"agecrypt"</span><span class="op">)</span></span></code></pre></div>
 <p>Either way there is nothing else to install — no system libraries and no external programs.</p>
 </div>
 <div class="section level2">
@@ -197,7 +197,7 @@
 </tr>
 <tr>
 <td><code>age_error_encrypt</code></td>
-<td>encryption fails after inputs are valid</td>
+<td>an encryption flag is invalid, or encryption fails</td>
 </tr>
 <tr>
 <td><code>age_error_decrypt</code></td>
@@ -301,7 +301,7 @@
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
-<p>MIT © the agecrypt authors. The vendored <code>agec</code> C sources are distributed under the 0BSD license; see <code>inst/COPYRIGHTS</code>.</p>
+<p>MIT © Pedro Baltazar. The vendored <code>agec</code> C sources are distributed under the 0BSD license; see <code>inst/COPYRIGHTS</code>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -340,6 +340,7 @@
 <div class="dev-status">
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
+<li><a href="https://www.r-pkg.org/pkg/agecrypt" class="external-link"><img src="https://www.r-pkg.org/badges/version/agecrypt" alt="PackageVersion"></a></li>
 <li><a href="https://github.com/pedrobtz/agecrypt/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/pedrobtz/agecrypt/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
 <li><a href="https://github.com/pedrobtz/agecrypt/actions/workflows/coverage.yaml" class="external-link"><img src="https://raw.githubusercontent.com/pedrobtz/agecrypt/main/.github/badges/coverage.svg" alt="coverage"></a></li>
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
