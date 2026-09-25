@@ -1,6 +1,7 @@
 # agecrypt
 
 <!-- badges: start -->
+[![PackageVersion](https://www.r-pkg.org/badges/version/agecrypt)](https://www.r-pkg.org/pkg/agecrypt)
 [![R-CMD-check](https://github.com/pedrobtz/agecrypt/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/pedrobtz/agecrypt/actions/workflows/R-CMD-check.yaml)
 [![coverage](https://raw.githubusercontent.com/pedrobtz/agecrypt/main/.github/badges/coverage.svg)](https://github.com/pedrobtz/agecrypt/actions/workflows/coverage.yaml)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
@@ -20,17 +21,17 @@ install). Files it produces interoperate with the reference
 
 ## Installation
 
-Install the development version from GitHub:
+Install the released version from CRAN:
+
+``` r
+install.packages("agecrypt")
+```
+
+Or the development version from GitHub:
 
 ``` r
 # install.packages("pak")
 pak::pak("pedrobtz/agecrypt")
-```
-
-Once released on CRAN:
-
-``` r
-install.packages("agecrypt")
 ```
 
 Either way there is nothing else to install — no system libraries and no
@@ -185,7 +186,7 @@ problem:
 |---|---|
 | `age_error_recipient` | a recipient string fails to parse |
 | `age_error_identity`  | an identity string or key file fails to parse |
-| `age_error_encrypt`   | encryption fails after inputs are valid |
+| `age_error_encrypt`   | an encryption flag is invalid, or encryption fails |
 | `age_error_decrypt`   | no identity/passphrase matches, or authentication fails |
 | `age_error_io`        | a file cannot be read or written |
 
@@ -248,5 +249,5 @@ sequential use is unaffected.
 
 ## License
 
-MIT © the agecrypt authors. The vendored `agec` C sources are distributed
+MIT © Pedro Baltazar. The vendored `agec` C sources are distributed
 under the 0BSD license; see `inst/COPYRIGHTS`.
