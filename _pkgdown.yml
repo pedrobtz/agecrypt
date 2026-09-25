@@ -1,4 +1,8 @@
-url: ~
+url: https://pedrobtz.github.io/agecrypt/
+
+development:
+  mode: auto
+
 template:
   bootstrap: 5
 
