@@ -1,0 +1,14 @@
+# Valgrind suppressions for the native-checks valgrind job.
+#
+# agecrypt does not link OpenSSL. These leaks come from the `openssl` R
+# package (Suggests, used by test-vectors.R for SHA-256), whose R_init_openssl
+# loads an OpenSSL 3 provider that is never unloaded. Scoped to libcrypto
+# allocations so a leak in agecrypt's own code still fails the job.
+{
+   openssl-libcrypto-leak
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect
+   fun:*alloc
+   ...
+   obj:*/libcrypto.so*
+}
