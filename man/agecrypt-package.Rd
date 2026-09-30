@@ -16,6 +16,7 @@ armor. SSH-key recipients and plugins are not supported.
 Useful links:
 \itemize{
   \item \url{https://github.com/pedrobtz/agecrypt}
+  \item \url{https://pedrobtz.github.io/agecrypt/}
   \item Report bugs at \url{https://github.com/pedrobtz/agecrypt/issues}
 }
 

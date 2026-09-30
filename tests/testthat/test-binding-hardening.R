@@ -98,7 +98,12 @@ test_that("the file passphrase entry point bounds the work factor too", {
   writeBin(charToRaw("x"), f)
   res <- .Call(
     C_age_c_encrypt_path_passphrase,
-    f, withr::local_tempfile(), "pw", FALSE, 99L, FALSE
+    f,
+    withr::local_tempfile(),
+    "pw",
+    FALSE,
+    99L,
+    FALSE
   )
   expect_identical(res[[1L]], "encrypt")
   expect_match(res[[2L]], "work factor out of range")
