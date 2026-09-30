@@ -6,7 +6,11 @@
 # * https://r-pkgs.org/testing-design.html#sec-tests-files-overview
 # * https://testthat.r-lib.org/articles/special-files.html
 
-library(testthat)
-library(agecrypt)
+# testthat is in Suggests: skip the suite rather than error when it is not
+# installed, as on CRAN's no-Suggests check flavor.
+if (requireNamespace("testthat", quietly = TRUE)) {
+  library(testthat)
+  library(agecrypt)
 
-test_check("agecrypt")
+  test_check("agecrypt")
+}
