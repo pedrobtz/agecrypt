@@ -13,3 +13,6 @@ docs/
 
 # Compiled objects and fuzz binaries are ignored by src/.gitignore and
 # fuzz/.gitignore respectively.
+
+# Written by devtools::submit_cran(); local submission state, not source
+CRAN-SUBMISSION
