@@ -39,6 +39,9 @@ jobs:
       - name: Deploy to GitHub pages 🚀
         uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
+          # The coverage workflow commits badges/coverage.svg to gh-pages:
+          # keep it (clean: false) and never force-push over its commit.
           clean: false
+          force: false
           branch: gh-pages
           folder: docs
