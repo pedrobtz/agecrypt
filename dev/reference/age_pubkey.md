@@ -25,5 +25,5 @@ A character vector of `"age1..."` recipient strings, one per identity.
 ``` r
 id <- age_keygen()
 age_pubkey(id)
-#> [1] "age1sqj3s2pkx8n9u3n7c0dqcvp20g2zr9phqz0ejsdjnnz60zkqm4fqps7zrw"
+#> [1] "age18fxsprws4l6mhq8n8s96ev65tf962ed27nmtjx4k30rl97v5sccq4htxuk"
 ```
