@@ -1,25 +1,38 @@
-# agecrypt (development version)
+# agecrypt 0.1.1
+
+## Bug fixes
+
+* Fixed silent data loss at the 8 KiB output-buffer boundary. Encrypting a
+  payload of about 8 KB (7992 to 8192 bytes) produced a truncated ciphertext
+  that could not be decrypted, and decrypting a file whose final chunk was
+  exactly 8 KiB (for example, a 73728-byte plaintext) returned truncated
+  plaintext. Both reported success. Ciphertexts of about 8 KB that were
+  created with 0.1.0 may be unrecoverable; decrypt-and-compare any you rely on.
+
+* Error messages now describe the failure that happened. Previously a failure
+  could report the message of an earlier, unrelated operation.
+
+## Security
+
+* Identity files are read, parsed, and scrubbed in native code. Previously the
+  secret key lines passed through `readLines()`, which kept them in R's global
+  string cache for the rest of the session.
+
+* The vendored 'agec' library is updated to version 1.0.0. Headers are now
+  parsed more strictly, as the age specification requires: stanzas with
+  malformed bodies are rejected, including those of unrecognized types.
+
+* The payload nonce counter now spans all 11 bytes that the age specification
+  defines, and a counter overflow is reported instead of reusing a nonce. No
+  reachable payload size is affected.
+
+* The native code no longer leaks internal buffers, or leaves a decoded secret
+  on the stack, when an operation fails part way.
+
+## Other changes
+
+* agecrypt now requires R 3.5.0 or later.
 
 # agecrypt 0.1.0
 
 * Initial version.
-
-## Fixes since the first submission
-
-* Fixed silent data loss at the 8 KiB output-buffer boundary in the vendored
-  `agec` I/O layer. Encrypting a payload of 7992-8192 bytes produced a
-  truncated, undecryptable ciphertext, and decrypting a file whose final
-  STREAM chunk was exactly 8192 bytes returned truncated plaintext with no
-  error. Both reported success.
-* Key files are now read, scanned and scrubbed in C. Previously the secret
-  keys were read with `readLines()`, which interned them in R's global string
-  cache for the life of the session.
-* The scrypt work factor is validated in C as well as in R; an out-of-range
-  value reaching the backend was undefined behaviour.
-* `incnonce()` now increments the full 11-byte STREAM counter and reports a
-  wrap instead of silently reusing a nonce.
-* The shared native error buffer is reset at every entry point, so a failure
-  can no longer report the previous operation's message.
-* In-memory stream slots are released even if an R allocation fails and
-  unwinds, and the recipient/identity entry points type-check their arguments
-  before allocating.
