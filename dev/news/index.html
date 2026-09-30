@@ -38,7 +38,17 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="agecrypt-010">agecrypt 0.1.0<a class="anchor" aria-label="anchor" href="#agecrypt-010"></a></h2><p class="text-muted">CRAN release: 2026-08-05</p>
 <ul><li>Initial version.</li>
+</ul><div class="section level3">
+<h3 id="fixes-since-the-first-submission-0-1-0">Fixes since the first submission<a class="anchor" aria-label="anchor" href="#fixes-since-the-first-submission-0-1-0"></a></h3>
+<ul><li>Fixed silent data loss at the 8 KiB output-buffer boundary in the vendored <code>agec</code> I/O layer. Encrypting a payload of 7992-8192 bytes produced a truncated, undecryptable ciphertext, and decrypting a file whose final STREAM chunk was exactly 8192 bytes returned truncated plaintext with no error. Both reported success.</li>
+<li>Key files are now read, scanned and scrubbed in C. Previously the secret keys were read with <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code>, which interned them in R’s global string cache for the life of the session.</li>
+<li>The scrypt work factor is validated in C as well as in R; an out-of-range value reaching the backend was undefined behaviour.</li>
+<li>
+<code>incnonce()</code> now increments the full 11-byte STREAM counter and reports a wrap instead of silently reusing a nonce.</li>
+<li>The shared native error buffer is reset at every entry point, so a failure can no longer report the previous operation’s message.</li>
+<li>In-memory stream slots are released even if an R allocation fails and unwinds, and the recipient/identity entry points type-check their arguments before allocating.</li>
 </ul></div>
+</div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

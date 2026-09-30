@@ -12,6 +12,8 @@ Useful links:
 
 - <https://github.com/pedrobtz/agecrypt>
 
+- <https://pedrobtz.github.io/agecrypt/>
+
 - Report bugs at <https://github.com/pedrobtz/agecrypt/issues>
 
 ## Author
