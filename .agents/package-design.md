@@ -93,9 +93,10 @@ errors instead of waiting in non-interactive sessions. `log_n` is validated from
 
 `age_identity` is an S3 wrapper around an opaque native pointer. Its printed and
 formatted forms contain public recipients only. There is intentionally no
-default secret exporter or character coercion. See
-[architecture.md](architecture.md#identity-lifecycle-and-secrecy) for the
-native lifecycle.
+default secret exporter or character coercion. Key files are read in C rather
+than with `readLines()`, so secrets loaded from disk never enter R's string
+cache. See [architecture.md](architecture.md#identity-lifecycle-and-secrecy)
+for the native lifecycle.
 
 ## Errors
 

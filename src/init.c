@@ -5,7 +5,7 @@
 #include <R_ext/Visibility.h>
 
 extern SEXP age_c_keygen(void);
-extern SEXP age_c_identity_parse(SEXP secrets);
+extern SEXP age_c_identity_parse(SEXP items, SEXP isfile);
 extern SEXP age_c_identity_pubkeys(SEXP ext);
 extern SEXP age_c_identity_write(SEXP ext, SEXP path, SEXP created, SEXP overwrite);
 extern SEXP age_c_identity_free(SEXP ext);
@@ -20,7 +20,7 @@ extern SEXP age_c_decrypt_path_passphrase(SEXP inpath, SEXP outpath, SEXP pass, 
 
 static const R_CallMethodDef CallEntries[] = {
 	{"age_c_keygen",          (DL_FUNC) &age_c_keygen,          0},
-	{"age_c_identity_parse",  (DL_FUNC) &age_c_identity_parse,  1},
+	{"age_c_identity_parse",  (DL_FUNC) &age_c_identity_parse,  2},
 	{"age_c_identity_pubkeys",(DL_FUNC) &age_c_identity_pubkeys,1},
 	{"age_c_identity_write",  (DL_FUNC) &age_c_identity_write,  4},
 	{"age_c_identity_free",   (DL_FUNC) &age_c_identity_free,   1},

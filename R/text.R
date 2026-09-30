@@ -36,13 +36,19 @@ age_encrypt_text <- function(x, recipients, armor = TRUE) {
   }
   armor <- check_flag(armor, "armor")
   if (!armor) {
-    age_abort("encrypt", paste(
-      "`age_encrypt_text()` always produces armored text;",
-      "use `age_encrypt_raw()` for unarmored binary output"
-    ))
+    age_abort(
+      "encrypt",
+      paste(
+        "`age_encrypt_text()` always produces armored text;",
+        "use `age_encrypt_raw()` for unarmored binary output"
+      )
+    )
   }
-  ct <- age_encrypt_raw(charToRaw(enc2utf8(x)), recipients = recipients,
-                        armor = TRUE)
+  ct <- age_encrypt_raw(
+    charToRaw(enc2utf8(x)),
+    recipients = recipients,
+    armor = TRUE
+  )
   rawToChar(ct)
 }
 
@@ -52,17 +58,23 @@ age_decrypt_text <- function(x, identities) {
   raw <- age_decrypt_raw(x, identities = identities)
   # age_decrypt_text is for text; refuse to hand back binary as a bogus string.
   if (length(raw) > 0L && any(raw == as.raw(0L))) {
-    age_abort("decrypt", paste(
-      "decrypted data contains an embedded NUL;",
-      "use age_decrypt_raw() for binary data"
-    ))
+    age_abort(
+      "decrypt",
+      paste(
+        "decrypted data contains an embedded NUL;",
+        "use age_decrypt_raw() for binary data"
+      )
+    )
   }
   out <- rawToChar(raw)
   if (!validUTF8(out)) {
-    age_abort("decrypt", paste(
-      "decrypted data is not valid UTF-8;",
-      "use age_decrypt_raw() for binary data"
-    ))
+    age_abort(
+      "decrypt",
+      paste(
+        "decrypted data is not valid UTF-8;",
+        "use age_decrypt_raw() for binary data"
+      )
+    )
   }
   Encoding(out) <- "UTF-8"
   out

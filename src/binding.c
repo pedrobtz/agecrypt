@@ -10,9 +10,10 @@
  *   - the in-memory stream table `memtab` in src/memio.c.
  * Each operation runs to completion before the next, and an error string is
  * consumed immediately after the call that produced it, so this global state
- * is effectively operation-local under R. Do not call this code from multiple
- * threads or re-enter it from a callback without first making that state
- * operation-local.
+ * is effectively operation-local under R. Every entry point calls eclear()
+ * first so no message survives into the next operation. Do not call this code
+ * from multiple threads or re-enter it from a callback without first making
+ * that state operation-local.
  */
 
 #define R_NO_REMAP
@@ -26,6 +27,7 @@
 #include "agecore.h"
 #include "memio.h"
 #include "fileio.h"
+#include "platform.h"
 
 /* O_BINARY suppresses CRLF/Ctrl-Z translation when reading ciphertext on
    Windows; it does not exist on POSIX, where file I/O is already binary. */
@@ -35,6 +37,19 @@
 
 #define PUBKEYLEN  62   /* "age1..." recipient string length          */
 #define PRIVKEYLEN 74   /* "AGE-SECRET-KEY-1..." identity string length */
+
+/*
+ * scrypt work-factor bounds. agec's wrapkey() computes `1 << cost` on an int,
+ * which is undefined for cost >= 31, so the bound is enforced here as well as
+ * in R: the R layer is the only caller in practice, but a .Call() straight to
+ * the registered symbol must not reach undefined behaviour. The upper bound
+ * matches SCRYPTMAXCOST in src/agec/agecore.c, which guards the decrypt side.
+ */
+#define SCRYPT_MINCOST 2
+#define SCRYPT_MAXCOST 22
+
+/* Key files hold a handful of short lines; cap what we will read. */
+#define KEYFILE_MAX (1024 * 1024)
 
 /*
  * Every entry point returns a length-2 list: element 0 is a status string
@@ -67,6 +82,14 @@ result_err(const char *cls, const char *msg)
 	SET_VECTOR_ELT(out, 1, Rf_mkString(msg));
 	UNPROTECT(1);
 	return out;
+}
+
+/* Copy into a caller-owned buffer; agec error strings point into ebuf. */
+static void
+copyerr(char *dst, usize cap, const char *src)
+{
+	strncpy(dst, src, cap - 1);
+	dst[cap - 1] = '\0';
 }
 
 /* ---- identity external pointer ---- */
@@ -135,6 +158,8 @@ id_wrap(AgeIdentities *id)
 /*
  * On success stores a freshly malloc'd nrec*32 pubkey array in *out and
  * returns NULL. On failure returns an error message and leaves *out NULL.
+ * The type check matters: STRING_ELT() on a non-character vector raises an R
+ * error, which would longjmp straight past the free() below.
  */
 static const char *
 parse_recipients(SEXP recipients, uchar **out, R_xlen_t *nout)
@@ -144,6 +169,8 @@ parse_recipients(SEXP recipients, uchar **out, R_xlen_t *nout)
 	char bech[PUBKEYLEN + 1];
 
 	*out = NULL;
+	if(TYPEOF(recipients) != STRSXP)
+		return "recipients must be a character vector";
 	nrec = XLENGTH(recipients);
 	if(nrec == 0)
 		return "no recipients supplied";
@@ -151,7 +178,13 @@ parse_recipients(SEXP recipients, uchar **out, R_xlen_t *nout)
 	if(recs == NULL)
 		return "out of memory";
 	for(i = 0; i < nrec; i++) {
-		const char *s = CHAR(STRING_ELT(recipients, i));
+		SEXP el = STRING_ELT(recipients, i);
+		const char *s;
+		if(el == NA_STRING) {
+			free(recs);
+			return "invalid recipient string";
+		}
+		s = CHAR(el);
 		if(strlen(s) != PUBKEYLEN) {
 			free(recs);
 			return "invalid recipient string";
@@ -168,6 +201,192 @@ parse_recipients(SEXP recipients, uchar **out, R_xlen_t *nout)
 	return NULL;
 }
 
+/* ---- identity key collection ---- */
+
+/*
+ * A growable array of 32-byte private keys. Key files can hold any number of
+ * identities, so the array is sized as they are parsed rather than up front.
+ */
+struct keybuf {
+	uchar    *keys;
+	R_xlen_t  n, cap;
+};
+
+static void
+keybuf_free(struct keybuf *kb)
+{
+	if(kb->keys != NULL) {
+		wipe(kb->keys, (usize)kb->cap * 32);
+		free(kb->keys);
+	}
+	kb->keys = NULL;
+	kb->n = kb->cap = 0;
+}
+
+/*
+ * Decode one "AGE-SECRET-KEY-1..." string and append it.
+ * Returns 1 on success, 0 if the string is not a valid identity, -1 on OOM.
+ */
+static int
+keybuf_push(struct keybuf *kb, const char *s)
+{
+	char bech[PRIVKEYLEN + 1];
+	uchar *p;
+	int ok;
+
+	if(strlen(s) != PRIVKEYLEN)
+		return 0;
+	if(kb->n == kb->cap) {
+		R_xlen_t ncap = kb->cap ? kb->cap * 2 : 4;
+		p = realloc(kb->keys, (usize)ncap * 32);
+		if(p == NULL)
+			return -1;
+		kb->keys = p;
+		kb->cap = ncap;
+	}
+	memcpy(bech, s, PRIVKEYLEN);
+	bech[PRIVKEYLEN] = '\0';
+	ok = x25519privkey(bech, kb->keys + kb->n * 32);
+	wipe(bech, sizeof(bech));            /* holds a secret on every path */
+	if(!ok)
+		return 0;
+	kb->n++;
+	return 1;
+}
+
+/* Strip leading/trailing ASCII whitespace in place. */
+static char *
+trimline(char *s)
+{
+	char *e;
+
+	while(*s == ' ' || *s == '\t' || *s == '\r')
+		s++;
+	e = s + strlen(s);
+	while(e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\r'))
+		e--;
+	*e = '\0';
+	return s;
+}
+
+/*
+ * Read a whole key file into a malloc'd, NUL-terminated buffer.
+ * Returns the buffer (caller wipes and frees) or NULL with msg set.
+ */
+static char *
+slurp_keyfile(const char *path, usize *lenout, char *msg, usize msgcap)
+{
+	char *buf, *p;
+	usize cap, len;
+	ssize nr;
+	int fd;
+
+	fd = open(path, O_RDONLY | O_BINARY);
+	if(fd == -1) {
+		copyerr(msg, msgcap, strerror(errno));
+		return NULL;
+	}
+	cap = 4096;
+	len = 0;
+	buf = malloc(cap);
+	if(buf == NULL) {
+		close(fd);
+		copyerr(msg, msgcap, "out of memory");
+		return NULL;
+	}
+	for(;;) {
+		if(len >= KEYFILE_MAX) {
+			wipe(buf, cap);
+			free(buf);
+			close(fd);
+			copyerr(msg, msgcap, "key file is too large");
+			return NULL;
+		}
+		if(len == cap - 1) {
+			p = realloc(buf, cap * 2);
+			if(p == NULL) {
+				wipe(buf, cap);
+				free(buf);
+				close(fd);
+				copyerr(msg, msgcap, "out of memory");
+				return NULL;
+			}
+			buf = p;
+			cap *= 2;
+		}
+		nr = read(fd, buf + len, cap - 1 - len);
+		if(nr == -1) {
+			copyerr(msg, msgcap, strerror(errno));
+			wipe(buf, cap);
+			free(buf);
+			close(fd);
+			return NULL;
+		}
+		if(nr == 0)
+			break;
+		len += (usize)nr;
+	}
+	close(fd);
+	buf[len] = '\0';
+	*lenout = cap;                       /* wipe the whole allocation */
+	return buf;
+}
+
+/*
+ * Parse every identity in a key file, appending to `kb`. The file's bytes are
+ * read, scanned and scrubbed entirely in C: secrets loaded from disk must not
+ * pass through R, whose CHARSXP cache would retain them for the life of the
+ * session. Returns 1 on success, 0 with msg set on failure.
+ */
+static int
+scan_keyfile(const char *path, struct keybuf *kb, char *msg, usize msgcap)
+{
+	char *buf, *line, *next, *t;
+	usize cap;
+	R_xlen_t before = kb->n;
+	int rc, ok = 0;
+
+	buf = slurp_keyfile(path, &cap, msg, msgcap);
+	if(buf == NULL)
+		return 0;
+	for(line = buf; line != NULL; line = next) {
+		next = strchr(line, '\n');
+		if(next != NULL)
+			*next++ = '\0';
+		t = trimline(line);
+		/*
+		 * An encrypted key file is itself an age file; refuse it with a
+		 * clear message rather than reporting "no identities".
+		 */
+		if(strncmp(t, "-----BEGIN AGE", 14) == 0 ||
+		   strstr(t, "age-encryption.org/v1") != NULL) {
+			copyerr(msg, msgcap,
+				"passphrase-encrypted key files are not supported");
+			goto out;
+		}
+		if(strncmp(t, "AGE-SECRET-KEY-1", 16) != 0)
+			continue;                /* comments, blank lines, pubkeys */
+		rc = keybuf_push(kb, t);
+		if(rc == -1) {
+			copyerr(msg, msgcap, "out of memory");
+			goto out;
+		}
+		if(rc == 0) {
+			copyerr(msg, msgcap, "failed to parse identity in key file");
+			goto out;
+		}
+	}
+	if(kb->n == before) {
+		copyerr(msg, msgcap, "no age identities in key file");
+		goto out;
+	}
+	ok = 1;
+out:
+	wipe(buf, cap);
+	free(buf);
+	return ok;
+}
+
 /* ---- keygen ---- */
 
 SEXP
@@ -176,6 +395,7 @@ age_c_keygen(void)
 	uchar priv[32], pub[32];
 	AgeIdentities *id;
 
+	eclear();
 	if(!randombuf(priv, 32))
 		return result_err("internal", "failed to generate private key");
 	if(!x25519pub(pub, priv)) {
@@ -202,40 +422,66 @@ age_c_keygen(void)
 
 /* ---- identity parse ---- */
 
+/*
+ * `items` holds inline "AGE-SECRET-KEY-1..." strings and key-file paths;
+ * `isfile` marks which is which, elementwise, so the original order is kept
+ * (identities are tried in order on decrypt). Key files are read here in C.
+ */
 SEXP
-age_c_identity_parse(SEXP secrets)
+age_c_identity_parse(SEXP items, SEXP isfile)
 {
-	R_xlen_t n, i;
+	struct keybuf kb = { NULL, 0, 0 };
 	AgeIdentities *id;
-	char bech[PRIVKEYLEN + 1];
+	R_xlen_t n, i;
+	char msg[512];
+	const int *file;
+	int rc;
 
-	n = XLENGTH(secrets);
-	if(n == 0)
+	eclear();
+	if(TYPEOF(items) != STRSXP || TYPEOF(isfile) != LGLSXP)
+		return result_err("identity", "invalid identity input");
+	n = XLENGTH(items);
+	if(n == 0 || XLENGTH(isfile) != n)
 		return result_err("identity", "no identities supplied");
-	id = malloc(sizeof(*id));
-	if(id == NULL)
-		return result_err("identity", "out of memory");
-	id->keys = malloc((usize)n * 32);
-	if(id->keys == NULL) {
-		free(id);
-		return result_err("identity", "out of memory");
-	}
-	id->n = n;
+	file = LOGICAL(isfile);
+
 	for(i = 0; i < n; i++) {
-		const char *s = CHAR(STRING_ELT(secrets, i));
-		if(strlen(s) != PRIVKEYLEN) {
-			id_destroy(id);
+		SEXP el = STRING_ELT(items, i);
+		const char *s;
+
+		if(el == NA_STRING || file[i] == NA_LOGICAL) {
+			keybuf_free(&kb);
 			return result_err("identity", "invalid identity string");
 		}
-		memcpy(bech, s, PRIVKEYLEN);
-		bech[PRIVKEYLEN] = '\0';
-		if(!x25519privkey(bech, id->keys + i * 32)) {
-			wipe(bech, sizeof(bech));
-			id_destroy(id);
+		s = CHAR(el);
+		if(file[i]) {
+			if(!scan_keyfile(s, &kb, msg, sizeof(msg))) {
+				keybuf_free(&kb);
+				return result_err("identity", msg);
+			}
+			continue;
+		}
+		rc = keybuf_push(&kb, s);
+		if(rc == -1) {
+			keybuf_free(&kb);
+			return result_err("identity", "out of memory");
+		}
+		if(rc == 0) {
+			keybuf_free(&kb);
 			return result_err("identity", "failed to parse identity");
 		}
 	}
-	wipe(bech, sizeof(bech));
+	if(kb.n == 0) {
+		keybuf_free(&kb);
+		return result_err("identity", "no identities found");
+	}
+	id = malloc(sizeof(*id));
+	if(id == NULL) {
+		keybuf_free(&kb);
+		return result_err("identity", "out of memory");
+	}
+	id->keys = kb.keys;                  /* ownership moves to the identity */
+	id->n = kb.n;
 	return result_ok(id_wrap(id));
 }
 
@@ -251,6 +497,7 @@ age_c_identity_pubkeys(SEXP ext)
 	char label[] = "age";
 	char bech[PUBKEYLEN + 1];
 
+	eclear();
 	id = id_addr(ext);
 	if(id == NULL || id->keys == NULL)
 		return result_err("identity", "invalid or freed identity");
@@ -303,16 +550,14 @@ commit_output(int tmpfd, const char *tmppath, const char *outp, int overwrite,
 		saved = errno;
 		unlink(tmppath);
 		if(saved == EEXIST) {
-			strncpy(errbuf, "output already exists", errcap - 1);
-			errbuf[errcap - 1] = '\0';
+			copyerr(errbuf, errcap, "output already exists");
 			return -1;
 		}
 		goto fail;
 	}
 	return 0;
 fail:
-	strncpy(errbuf, strerror(saved), errcap - 1);
-	errbuf[errcap - 1] = '\0';
+	copyerr(errbuf, errcap, strerror(saved));
 	return -1;
 }
 
@@ -341,6 +586,7 @@ age_c_identity_write(SEXP ext, SEXP path, SEXP created, SEXP overwrite)
 	char *tmppath, msg[256];
 	int tmpfd, j, n;
 
+	eclear();
 	id = id_addr(ext);
 	if(id == NULL || id->keys == NULL)
 		return result_err("identity", "invalid or freed identity");
@@ -352,8 +598,7 @@ age_c_identity_write(SEXP ext, SEXP path, SEXP created, SEXP overwrite)
 		return result_err("io", "out of memory");
 	tmpfd = age_open_temp(outp, tmppath, strlen(outp) + 24);   /* mode 0600 */
 	if(tmpfd == -1) {
-		strncpy(msg, strerror(errno), sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
+		copyerr(msg, sizeof(msg), strerror(errno));
 		free(tmppath);
 		return result_err("io", msg);
 	}
@@ -399,6 +644,83 @@ age_c_identity_free(SEXP ext)
 	return R_NilValue;
 }
 
+/* ---- in-memory operation teardown ---- */
+
+/*
+ * The four raw entry points share one tail: copy the sink into a fresh raw
+ * vector, then close and scrub everything. Building the result allocates, and
+ * an R allocation failure unwinds -- which would leak the two memfd slots.
+ * memtab holds only MEMFD_MAX of them, so a handful of such failures would
+ * wedge the backend for the rest of the session. R_UnwindProtect runs the
+ * teardown on that path too.
+ */
+struct mem_teardown {
+	int   vin, vout;
+	Ibuf *ib;
+	Obuf *ob;
+};
+
+static void
+mem_clean(void *data, Rboolean jump)
+{
+	struct mem_teardown *c = data;
+
+	(void)jump;                          /* same teardown either way */
+	wipe(c->ob, sizeof(*c->ob));
+	ibfree(c->ib);
+	memclose(c->vin);
+	memclose(c->vout);
+}
+
+static SEXP
+mem_body(void *data)
+{
+	struct mem_teardown *c = data;
+	usize olen;
+	uchar *odata;
+	SEXP res, out;
+
+	odata = memdata(c->vout, &olen);
+	res = PROTECT(Rf_allocVector(RAWSXP, olen));
+	if(olen > 0)
+		memcpy(RAW(res), odata, olen);
+	out = result_ok(res);
+	UNPROTECT(1);
+	return out;
+}
+
+static SEXP
+mem_finish(int vin, int vout, Ibuf *ib, Obuf *ob)
+{
+	struct mem_teardown c;
+	SEXP cont, out;
+
+	c.vin = vin;
+	c.vout = vout;
+	c.ib = ib;
+	c.ob = ob;
+	cont = PROTECT(R_MakeUnwindCont());
+	out = R_UnwindProtect(mem_body, &c, mem_clean, &c, cont);
+	UNPROTECT(1);
+	return out;
+}
+
+/* Tear down, then build the error result (no allocation before cleanup). */
+static SEXP
+mem_fail(int vin, int vout, Ibuf *ib, Obuf *ob, const char *cls, const char *e)
+{
+	struct mem_teardown c;
+	char msg[EBUFSIZE];
+
+	copyerr(msg, sizeof(msg), e);
+	c.vin = vin;
+	c.vout = vout;
+	c.ib = ib;
+	c.ob = ob;
+	mem_clean(&c, FALSE);
+	return result_err(cls, msg);
+}
+
 /* ---- raw encrypt / decrypt ---- */
 
 SEXP
@@ -406,19 +728,26 @@ age_c_encrypt(SEXP data, SEXP recipients, SEXP armor)
 {
 	uchar *recs = NULL;
 	R_xlen_t nrec = 0;
+	const uchar *din;
+	usize dlen;
 	const char *e;
 	int vin, vout;
 	Ibuf ib;
 	Obuf ob;
-	usize olen;
-	uchar *odata;
-	SEXP res, out;
+
+	eclear();
+	/*
+	 * Touch the payload before anything is allocated: RAW() raises an R
+	 * error on a non-raw input, and that longjmp must not skip free(recs).
+	 */
+	din = RAW(data);
+	dlen = (usize)XLENGTH(data);
 
 	e = parse_recipients(recipients, &recs, &nrec);
 	if(e != NULL)
 		return result_err("recipient", e);
 
-	vin = memopen_read(RAW(data), (usize)XLENGTH(data));
+	vin = memopen_read(din, dlen);
 	vout = memopen_write();
 	if(vin == -1 || vout == -1) {
 		if(vin != -1) memclose(vin);
@@ -433,48 +762,32 @@ age_c_encrypt(SEXP data, SEXP recipients, SEXP armor)
 	ob.isarmor = Rf_asLogical(armor) == 1;
 
 	e = age_encipher(&ib, &ob, recs, nrec);
-	if(e != NULL) {
-		char msg[EBUFSIZE];
-		strncpy(msg, e, sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
-		wipe(&ob, sizeof(ob));
-		ibfree(&ib);
-		memclose(vin);
-		memclose(vout);
-		free(recs);
-		return result_err("encrypt", msg);
-	}
-	odata = memdata(vout, &olen);
-	res = PROTECT(Rf_allocVector(RAWSXP, olen));
-	if(olen > 0)
-		memcpy(RAW(res), odata, olen);
-	out = result_ok(res);
-	UNPROTECT(1);
-	wipe(&ob, sizeof(ob));
-	ibfree(&ib);
-	memclose(vin);
-	memclose(vout);
 	free(recs);
-	return out;
+	if(e != NULL)
+		return mem_fail(vin, vout, &ib, &ob, "encrypt", e);
+	return mem_finish(vin, vout, &ib, &ob);
 }
 
 SEXP
 age_c_decrypt(SEXP data, SEXP ext)
 {
 	AgeIdentities *id;
+	const uchar *din;
+	usize dlen;
 	const char *e;
 	int vin, vout;
 	Ibuf ib;
 	Obuf ob;
-	usize olen;
-	uchar *odata;
-	SEXP res, out;
+
+	eclear();
+	din = RAW(data);
+	dlen = (usize)XLENGTH(data);
 
 	id = id_addr(ext);
 	if(id == NULL || id->keys == NULL)
 		return result_err("identity", "invalid or freed identity");
 
-	vin = memopen_read(RAW(data), (usize)XLENGTH(data));
+	vin = memopen_read(din, dlen);
 	vout = memopen_write();
 	if(vin == -1 || vout == -1) {
 		if(vin != -1) memclose(vin);
@@ -487,27 +800,9 @@ age_c_decrypt(SEXP data, SEXP ext)
 	ob.isarmor = 0;
 
 	e = age_decipher(&ib, &ob, id->keys, id->n);
-	if(e != NULL) {
-		char msg[EBUFSIZE];
-		strncpy(msg, e, sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
-		wipe(&ob, sizeof(ob));
-		ibfree(&ib);
-		memclose(vin);
-		memclose(vout);
-		return result_err("decrypt", msg);
-	}
-	odata = memdata(vout, &olen);
-	res = PROTECT(Rf_allocVector(RAWSXP, olen));
-	if(olen > 0)
-		memcpy(RAW(res), odata, olen);
-	out = result_ok(res);
-	UNPROTECT(1);
-	wipe(&ob, sizeof(ob));
-	ibfree(&ib);
-	memclose(vin);
-	memclose(vout);
-	return out;
+	if(e != NULL)
+		return mem_fail(vin, vout, &ib, &ob, "decrypt", e);
+	return mem_finish(vin, vout, &ib, &ob);
 }
 
 /* ---- file encrypt / decrypt (streamed through an atomic temp file) ---- */
@@ -537,15 +832,13 @@ run_file_transform(const char *inp, const char *outp, int isarmor, int recording
 		return result_err("io", "out of memory");
 	infd = open(inp, O_RDONLY | O_BINARY);
 	if(infd == -1) {
-		strncpy(msg, strerror(errno), sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
+		copyerr(msg, sizeof(msg), strerror(errno));
 		free(tmppath);
 		return result_err("io", msg);
 	}
 	tmpfd = age_open_temp(outp, tmppath, strlen(outp) + 24);
 	if(tmpfd == -1) {
-		strncpy(msg, strerror(errno), sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
+		copyerr(msg, sizeof(msg), strerror(errno));
 		close(infd);
 		free(tmppath);
 		return result_err("io", msg);
@@ -557,10 +850,8 @@ run_file_transform(const char *inp, const char *outp, int isarmor, int recording
 	ob.isarmor = isarmor;
 
 	e = fn(&ib, &ob, ctx);
-	if(e != NULL) {                 /* copy before any call can touch ebuf */
-		strncpy(msg, e, sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
-	}
+	if(e != NULL)                   /* copy before any call can touch ebuf */
+		copyerr(msg, sizeof(msg), e);
 	wipe(&ob, sizeof(ob));
 	ibfree(&ib);
 	close(infd);
@@ -615,17 +906,21 @@ age_c_encrypt_path(SEXP inpath, SEXP outpath, SEXP recipients, SEXP armor,
 {
 	uchar *recs = NULL;
 	R_xlen_t nrec = 0;
-	const char *e;
+	const char *e, *inp, *outp;
 	struct enc_ctx ctx;
 	SEXP out;
+
+	eclear();
+	/* Resolve both paths before malloc'ing: CHAR()/STRING_ELT() can raise. */
+	inp = CHAR(STRING_ELT(inpath, 0));
+	outp = CHAR(STRING_ELT(outpath, 0));
 
 	e = parse_recipients(recipients, &recs, &nrec);
 	if(e != NULL)
 		return result_err("recipient", e);
 	ctx.recs = recs;
 	ctx.nrec = nrec;
-	out = run_file_transform(CHAR(STRING_ELT(inpath, 0)),
-			CHAR(STRING_ELT(outpath, 0)),
+	out = run_file_transform(inp, outp,
 			Rf_asLogical(armor) == 1, 0, Rf_asLogical(overwrite) == 1,
 			tf_encrypt, &ctx, "encrypt");
 	free(recs);
@@ -638,6 +933,7 @@ age_c_decrypt_path(SEXP inpath, SEXP outpath, SEXP ext, SEXP overwrite)
 	AgeIdentities *id;
 	struct dec_ctx ctx;
 
+	eclear();
 	id = id_addr(ext);
 	if(id == NULL || id->keys == NULL)
 		return result_err("identity", "invalid or freed identity");
@@ -650,19 +946,37 @@ age_c_decrypt_path(SEXP inpath, SEXP outpath, SEXP ext, SEXP overwrite)
 
 /* ---- passphrase (scrypt) encrypt / decrypt ---- */
 
+/* See SCRYPT_MINCOST/SCRYPT_MAXCOST: out of range, `1 << cost` would be UB. */
+static int
+check_cost(SEXP logn, uint *cost)
+{
+	int v = Rf_asInteger(logn);
+
+	if(v == NA_INTEGER || v < SCRYPT_MINCOST || v > SCRYPT_MAXCOST)
+		return 0;
+	*cost = (uint)v;
+	return 1;
+}
+
 SEXP
 age_c_encrypt_passphrase(SEXP data, SEXP pass, SEXP armor, SEXP logn)
 {
 	const char *e, *p;
+	const uchar *din;
+	usize dlen;
+	uint cost;
 	int vin, vout;
 	Ibuf ib;
 	Obuf ob;
-	usize olen;
-	uchar *odata;
-	SEXP res, out;
 
+	eclear();
+	din = RAW(data);
+	dlen = (usize)XLENGTH(data);
+	if(!check_cost(logn, &cost))
+		return result_err("encrypt", "scrypt work factor out of range");
 	p = CHAR(STRING_ELT(pass, 0));
-	vin = memopen_read(RAW(data), (usize)XLENGTH(data));
+
+	vin = memopen_read(din, dlen);
 	vout = memopen_write();
 	if(vin == -1 || vout == -1) {
 		if(vin != -1) memclose(vin);
@@ -675,43 +989,28 @@ age_c_encrypt_passphrase(SEXP data, SEXP pass, SEXP armor, SEXP logn)
 	ob.cur = 0;
 	ob.isarmor = Rf_asLogical(armor) == 1;
 
-	e = age_encipher_passphrase(&ib, &ob, p, (uint)Rf_asInteger(logn));
-	if(e != NULL) {
-		char msg[EBUFSIZE];
-		strncpy(msg, e, sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
-		wipe(&ob, sizeof(ob));
-		ibfree(&ib);
-		memclose(vin);
-		memclose(vout);
-		return result_err("encrypt", msg);
-	}
-	odata = memdata(vout, &olen);
-	res = PROTECT(Rf_allocVector(RAWSXP, olen));
-	if(olen > 0)
-		memcpy(RAW(res), odata, olen);
-	out = result_ok(res);
-	UNPROTECT(1);
-	wipe(&ob, sizeof(ob));
-	ibfree(&ib);
-	memclose(vin);
-	memclose(vout);
-	return out;
+	e = age_encipher_passphrase(&ib, &ob, p, cost);
+	if(e != NULL)
+		return mem_fail(vin, vout, &ib, &ob, "encrypt", e);
+	return mem_finish(vin, vout, &ib, &ob);
 }
 
 SEXP
 age_c_decrypt_passphrase(SEXP data, SEXP pass)
 {
 	const char *e, *p;
+	const uchar *din;
+	usize dlen;
 	int vin, vout;
 	Ibuf ib;
 	Obuf ob;
-	usize olen;
-	uchar *odata;
-	SEXP res, out;
 
+	eclear();
+	din = RAW(data);
+	dlen = (usize)XLENGTH(data);
 	p = CHAR(STRING_ELT(pass, 0));
-	vin = memopen_read(RAW(data), (usize)XLENGTH(data));
+
+	vin = memopen_read(din, dlen);
 	vout = memopen_write();
 	if(vin == -1 || vout == -1) {
 		if(vin != -1) memclose(vin);
@@ -724,27 +1023,9 @@ age_c_decrypt_passphrase(SEXP data, SEXP pass)
 	ob.isarmor = 0;
 
 	e = age_decipher_passphrase(&ib, &ob, p);
-	if(e != NULL) {
-		char msg[EBUFSIZE];
-		strncpy(msg, e, sizeof(msg) - 1);
-		msg[sizeof(msg) - 1] = '\0';
-		wipe(&ob, sizeof(ob));
-		ibfree(&ib);
-		memclose(vin);
-		memclose(vout);
-		return result_err("decrypt", msg);
-	}
-	odata = memdata(vout, &olen);
-	res = PROTECT(Rf_allocVector(RAWSXP, olen));
-	if(olen > 0)
-		memcpy(RAW(res), odata, olen);
-	out = result_ok(res);
-	UNPROTECT(1);
-	wipe(&ob, sizeof(ob));
-	ibfree(&ib);
-	memclose(vin);
-	memclose(vout);
-	return out;
+	if(e != NULL)
+		return mem_fail(vin, vout, &ib, &ob, "decrypt", e);
+	return mem_finish(vin, vout, &ib, &ob);
 }
 
 SEXP
@@ -753,8 +1034,10 @@ age_c_encrypt_path_passphrase(SEXP inpath, SEXP outpath, SEXP pass, SEXP armor,
 {
 	struct encp_ctx ctx;
 
+	eclear();
+	if(!check_cost(logn, &ctx.cost))
+		return result_err("encrypt", "scrypt work factor out of range");
 	ctx.pass = CHAR(STRING_ELT(pass, 0));
-	ctx.cost = (uint)Rf_asInteger(logn);
 	return run_file_transform(CHAR(STRING_ELT(inpath, 0)),
 			CHAR(STRING_ELT(outpath, 0)),
 			Rf_asLogical(armor) == 1, 0, Rf_asLogical(overwrite) == 1,
@@ -766,6 +1049,7 @@ age_c_decrypt_path_passphrase(SEXP inpath, SEXP outpath, SEXP pass, SEXP overwri
 {
 	struct decp_ctx ctx;
 
+	eclear();
 	ctx.pass = CHAR(STRING_ELT(pass, 0));
 	return run_file_transform(CHAR(STRING_ELT(inpath, 0)),
 			CHAR(STRING_ELT(outpath, 0)),

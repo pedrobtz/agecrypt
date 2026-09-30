@@ -46,5 +46,8 @@ test_that("age_identity_free scrubs the key and later use errors", {
   rec <- age_pubkey(id)
   ct <- age_encrypt_raw(charToRaw("z"), recipients = rec)
   expect_null(age_identity_free(id))
-  expect_error(age_decrypt_raw(ct, identities = id), class = "age_error_identity")
+  expect_error(
+    age_decrypt_raw(ct, identities = id),
+    class = "age_error_identity"
+  )
 })

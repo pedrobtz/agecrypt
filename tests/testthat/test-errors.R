@@ -50,7 +50,10 @@ test_that("undecryptable input raises age_error_decrypt", {
   # tampered final byte fails authentication
   bad <- ct
   bad[length(bad)] <- as.raw(bitwXor(as.integer(bad[length(bad)]), 0xff))
-  expect_error(age_decrypt_raw(bad, identities = p$id), class = "age_error_decrypt")
+  expect_error(
+    age_decrypt_raw(bad, identities = p$id),
+    class = "age_error_decrypt"
+  )
 })
 
 test_that("all age errors share the age_error parent class", {
