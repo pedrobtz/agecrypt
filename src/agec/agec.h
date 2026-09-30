@@ -13,11 +13,11 @@
 #include "base64.h"
 #include "crypto.h"
 #include "bech32.h"
+#include "io.h"      /* before header.h: Header holds an Obuf * */
 #include "header.h"
 #include "scrypt.h"
 #include "x25519.h"
 #include "keyenc.h"
-#include "io.h"
 #include "parse.h"
 #include "payload.h"
 #include "util.h"

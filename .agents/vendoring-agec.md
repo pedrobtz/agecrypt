@@ -36,10 +36,10 @@ vendor-YYYY-MM-DD     immutable package snapshot tag
 
 ```text
 Repository:    git@github.com:pedrobtz/agec.git
-Reference:     vendor-2026-07-09
-Commit:        5c95fe5b7bc0d9888333709eb7443a3a92fe5be7
-Upstream base: 19777bc35420f5a3fdc657c223cafb9f76b05754
-               (SourceHut 0.1.0-15-g19777bc)
+Reference:     vendor-2026-09-30
+Commit:        0b9532bd0133873947f3c2aa14b5198cf028ca41
+Upstream base: 85ace80cc4137095ca204eba5e099be4e978d889
+               (SourceHut 1.0.0)
 ```
 
 The snapshot is the upstream base plus the focused fix branches. The
@@ -104,8 +104,8 @@ randomness, memory I/O, and file helpers.
 For the currently recorded snapshot, the command is:
 
 ```sh
-tools/update-vendored-agec.sh vendor-2026-07-09 \
-  5c95fe5b7bc0d9888333709eb7443a3a92fe5be7
+tools/update-vendored-agec.sh vendor-2026-09-30 \
+  0b9532bd0133873947f3c2aa14b5198cf028ca41
 ```
 
 ### 4. Reapply package-only changes
@@ -114,6 +114,14 @@ Reapply only the modifications marked `[package-only]` in `inst/COPYRIGHTS`:
 
 - route vendored reads and writes through `ageread()` and `agewrite()`;
 - expose `scryptstanzacost()` so R's `log_n` reaches the backend.
+
+Package-owned code tracks upstream API changes too: `src/agec/agec.h` fixes the
+header include order, and `src/agec/agecore.c` mirrors the header and payload
+logic of upstream's `agec.c`.
+
+After importing, rebuild and run the sanitized fuzz smoke test in
+[`fuzz/README.md`](../fuzz/README.md): new upstream parser code is exactly what
+it exercises.
 
 Upstreamable fixes should already be present in `main` and the vendor tag.
 

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "crypto.h"
 #include "base64.h"
+#include "io.h"
 #include "header.h"
 #include "keyenc.h"
 #include "scrypt.h"
@@ -21,7 +22,10 @@ scryptstanza(Header *h, uchar filekey[16], char *pass)
 	return scryptstanzacost(h, filekey, pass, COST);
 }
 
-/* Like scryptstanza but with a caller-chosen work factor (log2 of N). */
+/*
+ * Package-only: like scryptstanza() but with a caller-chosen work factor
+ * (log2 of N), so the R-level log_n argument reaches the backend.
+ */
 const char *
 scryptstanzacost(Header *h, uchar filekey[16], char *pass, uint cost)
 {

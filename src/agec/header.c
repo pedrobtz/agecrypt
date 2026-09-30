@@ -2,21 +2,19 @@
 #include "crypto.h"
 #include "base64.h"
 #include "util.h"
+#include "io.h"
 #include "header.h"
-
-#define HDRINITLEN 128
 
 static const uchar label[] = "header";
 
-const char *
-hdrinit(Header *h)
+void
+hdrinit(Header *h, uchar filekey[16], Obuf *ob)
 {
-	h->data = malloc(HDRINITLEN);
-	if(h->data == NULL)
-		return eget();
-	h->allocated = HDRINITLEN;
-	h->len = 0;
-	return NULL;
+	uchar dk[32];
+
+	hkdfsha256(filekey, 16, NULL, 0, label, sizeof(label) - 1, dk);
+	hmacsha256init(&h->ctx, dk, sizeof(dk));
+	h->ob = ob;
 }
 
 const char *
@@ -24,36 +22,30 @@ hdrappend(Header *h, char *fmt, ...)
 {
 	va_list l;
 	char buf[256];
-	uchar *ndata;
-	usize nalloc;
+	ssize nw;
 	int ret;
-
+	
 	va_start(l, fmt);
 	ret = vsnprintf(buf, sizeof(buf), fmt, l);
 	va_end(l);
 	if(ret < 0 || (usize)ret >= sizeof(buf))
 		return "buffer overflow";
-	if(h->len + ret >= h->allocated) {
-		nalloc = h->len + ret + 1;
-		ndata = realloc(h->data, nalloc);   /* keep h->data on failure */
-		if(ndata == NULL)
-			return eget();
-		h->data = ndata;
-		h->allocated = nalloc;
-	}
-	memcpy(h->data + h->len, buf, ret);
-	h->len += ret;
+	nw = bwrite(h->ob, buf, ret);
+	if(nw == -1)
+		return eget();
+	hmacsha256update(&h->ctx, (uchar *)buf, ret);
 	return NULL;
 }
 
 /* out length must be at least B64EBUFLEN(32) */
 void
-hdrmac(uchar *data, usize len, uchar filekey[16], char *out, usize *outlen)
+hdrfinish(Header *h, char mac[B64EBUFLEN(32)], usize *maclen)
 {
 	uchar md[32];
 
-	mac(data, len, filekey, md);
-	base64encode(md, (uchar *)out, sizeof(md), outlen, 0);
+	hmacsha256final(&h->ctx, md);
+	wipe(h, sizeof(*h));
+	base64encode(md, (uchar *)mac, sizeof(md), maclen, 0);
 }
 
 void

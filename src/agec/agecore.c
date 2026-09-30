@@ -65,52 +65,18 @@ pubenc(Header *h, uchar filekey[16], const uchar *recs, usize nrec)
 	return NULL;
 }
 
+/*
+ * Stream the header into out, MACing it as it goes (hdrappend() writes
+ * through to out). Mirrors makehdr() in agec.c; the recipient stanzas are
+ * X25519 for recs, or a single scrypt stanza when pass is set.
+ */
 static const char *
-finish_hdr(Header *h, uchar filekey[16])
+makehdr(Header *h, Obuf *out, uchar filekey[16], const uchar *recs, usize nrec,
+		const char *pass, uint cost)
 {
-	char mac[B64EBUFLEN(32) + 1];
+	char mac[1 + B64EBUFLEN(32) + 1];
 	const char *e;
 	usize maclen;
-
-	e = hdrappend(h, "---");
-	if(e)
-		return e;
-	hdrmac(h->data, h->len, filekey, mac, &maclen);
-	mac[sizeof(mac) - 1] = '\0';
-	return hdrappend(h, " %s\n", mac);
-}
-
-static const char *
-genhdr(Header *h, uchar filekey[16], const uchar *recs, usize nrec)
-{
-	const char *e;
-
-	e = hdrappend(h, "age-encryption.org/v1\n");
-	if(e)
-		return e;
-	e = pubenc(h, filekey, recs, nrec);
-	if(e)
-		return e;
-	return finish_hdr(h, filekey);
-}
-
-static const char *
-genhdr_pass(Header *h, uchar filekey[16], const char *pass, uint cost)
-{
-	const char *e;
-
-	e = hdrappend(h, "age-encryption.org/v1\n");
-	if(e)
-		return e;
-	e = scryptstanzacost(h, filekey, (char *)pass, cost);
-	if(e)
-		return e;
-	return finish_hdr(h, filekey);
-}
-
-static const char *
-writehdr(Obuf *out, Header *h)
-{
 	ssize nw;
 
 	if(out->isarmor) {
@@ -118,7 +84,22 @@ writehdr(Obuf *out, Header *h)
 		if(nw == -1)
 			return eget();
 	}
-	nw = bwrite(out, h->data, h->len);
+	e = hdrappend(h, "age-encryption.org/v1\n");
+	if(e)
+		return e;
+	if(pass != NULL)
+		e = scryptstanzacost(h, filekey, (char *)pass, cost);
+	else
+		e = pubenc(h, filekey, recs, nrec);
+	if(e)
+		return e;
+	e = hdrappend(h, "---");
+	if(e)
+		return e;
+	mac[0] = ' ';
+	hdrfinish(h, mac + 1, &maclen);
+	mac[1 + maclen] = '\n';
+	nw = bwrite(out, mac, 1 + maclen + 1);
 	if(nw == -1)
 		return eget();
 	return NULL;
@@ -143,73 +124,44 @@ writebody(Obuf *out, Ibuf *in, uchar filekey[16])
 	return NULL;
 }
 
-/* Write a fully-built header and the encrypted payload. */
+/* pass == NULL selects the X25519 recipients in recs. */
 static const char *
-writeall_out(Ibuf *in, Obuf *out, Header *h, uchar filekey[16])
+encipher(Ibuf *in, Obuf *out, const uchar *recs, usize nrec, const char *pass,
+		uint cost)
 {
+	Header h;
+	uchar filekey[16];
 	const char *e;
 
-	e = writehdr(out, h);
+	e = mkfilekey(filekey);
+	if(e) {
+		wipe(filekey, sizeof(filekey));
+		return e;
+	}
+	hdrinit(&h, filekey, out);
+	e = makehdr(&h, out, filekey, recs, nrec, pass, cost);
 	if(e)
-		return ewrap("failed to encrypt", e);
-	e = writebody(out, in, filekey);
-	if(e)
-		return ewrap("failed to encrypt", e);
-	return NULL;
+		e = ewrap("failed to generate header", e);
+	else {
+		e = writebody(out, in, filekey);
+		if(e)
+			e = ewrap("failed to encrypt", e);
+	}
+	wipe(filekey, sizeof(filekey));
+	wipe(&h, sizeof(h));
+	return e;
 }
 
 const char *
 age_encipher(Ibuf *in, Obuf *out, const uchar *recs, usize nrec)
 {
-	Header h;
-	uchar filekey[16];
-	const char *e;
-
-	e = mkfilekey(filekey);
-	if(e) {
-		wipe(filekey, sizeof(filekey));
-		return e;
-	}
-	e = hdrinit(&h);
-	if(e) {
-		wipe(filekey, sizeof(filekey));
-		return ewrap("failed to generate header", e);
-	}
-	e = genhdr(&h, filekey, recs, nrec);
-	if(e)
-		e = ewrap("failed to generate header", e);
-	else
-		e = writeall_out(in, out, &h, filekey);
-	wipe(filekey, sizeof(filekey));
-	free(h.data);
-	return e;
+	return encipher(in, out, recs, nrec, NULL, 0);
 }
 
 const char *
 age_encipher_passphrase(Ibuf *in, Obuf *out, const char *pass, uint cost)
 {
-	Header h;
-	uchar filekey[16];
-	const char *e;
-
-	e = mkfilekey(filekey);
-	if(e) {
-		wipe(filekey, sizeof(filekey));
-		return e;
-	}
-	e = hdrinit(&h);
-	if(e) {
-		wipe(filekey, sizeof(filekey));
-		return ewrap("failed to generate header", e);
-	}
-	e = genhdr_pass(&h, filekey, pass, cost);
-	if(e)
-		e = ewrap("failed to generate header", e);
-	else
-		e = writeall_out(in, out, &h, filekey);
-	wipe(filekey, sizeof(filekey));
-	free(h.data);
-	return e;
+	return encipher(in, out, NULL, 0, pass, cost);
 }
 
 /* ---- decrypt ---- */

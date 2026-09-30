@@ -3,11 +3,12 @@
 #include "util.h"
 #include "keyenc.h"
 
+static const uchar nonce[12] = {0};
+
 void
 keyenc(uchar key[32], uchar filekey[16], uchar out[32])
 {
 	Chacha20poly1305ctx ctx;
-	static const uchar nonce[12] = {0};
 
 	chacha20poly1305init(&ctx, key, nonce);
 	chacha20poly1305write(&ctx, out, NULL, 0, filekey, 16);
@@ -17,7 +18,6 @@ keyenc(uchar key[32], uchar filekey[16], uchar out[32])
 int
 keydec(uchar key[32], uchar in[32], uchar out[16])
 {
-	static const uchar nonce[12] = {0};
 	Chacha20poly1305ctx ctx;
 	int fail;
 
