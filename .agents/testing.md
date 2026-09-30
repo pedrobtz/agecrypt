@@ -93,6 +93,22 @@ fuzz/build.sh
 See [`fuzz/README.md`](../fuzz/README.md) for corpus requirements, standalone
 smoke tests, coverage-guided runs, reproducer handling, and CI behavior.
 
+## Continuous integration
+
+`R-CMD-check.yaml`, `native-checks.yaml`, and `coverage.yaml` call the reusable
+workflows in [`pedrobtz/r-actions`](https://github.com/pedrobtz/r-actions).
+Pull requests run a quick profile: one Linux runner, the clang23 container,
+both UBSan legs (clang and gcc), LTO, rchk, gctorture at a coarse step, and the
+`-fanalyzer` report. Pushes to `main` run the full profile, which adds macOS,
+Windows, oldrel, the CRAN-like compiler containers, the no-Suggests flavor,
+ASan, valgrind, and CRAN's rcnst, rlibro, and vnu checks.
+
+Add the `full-ci` label to a pull request to run the full profile before
+merging. Do this for native changes: ASan and valgrind do not run otherwise.
+
+Valgrind suppressions live in `tools/valgrind.supp`. They cover only leaks in
+third-party libraries loaded by the test suite, never agecrypt's own code.
+
 ## Change-specific expectations
 
 - R validation changes: focused testthat tests and condition snapshots where

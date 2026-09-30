@@ -1,28 +1,60 @@
-# Native-code checks for the C sources: sanitizers (ASan/UBSan), valgrind,
-# LTO, gctorture, and rchk, via the reusable workflows in pedrobtz/r-actions.
+# Native-code checks for the C sources via the reusable workflows in
+# pedrobtz/r-actions: UBSan (clang and gcc, as CRAN runs them) and ASan,
+# valgrind, LTO, gctorture, rchk, gcc -fanalyzer, and CRAN's rcnst, rlibro
+# and vnu checks.
 on:
   push:
     branches: [main, master]
+  # `labeled` so that adding `full-ci` to a pull request reruns it in full.
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
 
 name: native-checks
 
 permissions: read-all
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+# `profile` goes to the four workflows it changes: quick skips the asan
+# containers, valgrind and cran-special, and runs gctorture at step 500
+# instead of 20. It is quick on pull requests unless they carry the
+# `full-ci` label, and full on every push to main.
 jobs:
   sanitizers:
     uses: pedrobtz/r-actions/.github/workflows/sanitizers.yml@v1
+    with:
+      asan: true
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
 
   valgrind:
     uses: pedrobtz/r-actions/.github/workflows/valgrind.yml@v1
     with:
       suppressions: tools/valgrind.supp
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
 
   lto:
     uses: pedrobtz/r-actions/.github/workflows/lto.yml@v1
 
   gctorture:
     uses: pedrobtz/r-actions/.github/workflows/gctorture.yml@v1
+    with:
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
 
   rchk:
     uses: pedrobtz/r-actions/.github/workflows/rchk.yml@v1
+
+  # Report-only until the first run's findings are triaged. Findings in the
+  # vendored agec sources are listed but not gated on.
+  analyzers:
+    uses: pedrobtz/r-actions/.github/workflows/analyzers.yml@v1
+    with:
+      exclude: src/agec
+
+  # CRAN's rcnst, rlibro and vnu checks -- the "Additional issues" nothing
+  # above reproduces.
+  cran-special:
+    uses: pedrobtz/r-actions/.github/workflows/cran-special.yml@v1
+    with:
+      profile: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-ci') && 'quick' || 'full' }}
