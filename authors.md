@@ -11,15 +11,15 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/pedrobtz/agecrypt/blob/0.1.0/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/pedrobtz/agecrypt/blob/main/DESCRIPTION)
 
 Baltazar P (2026). *agecrypt: File Encryption with the 'age' Format*. R
-package version 0.1.0, <https://github.com/pedrobtz/agecrypt>.
+package version 0.1.1, <https://github.com/pedrobtz/agecrypt>.
 
     @Manual{,
       title = {agecrypt: File Encryption with the 'age' Format},
       author = {Pedro Baltazar},
       year = {2026},
-      note = {R package version 0.1.0},
+      note = {R package version 0.1.1},
       url = {https://github.com/pedrobtz/agecrypt},
     }

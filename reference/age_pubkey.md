@@ -13,8 +13,8 @@ age_pubkey(identities)
 - identities:
 
   An `age_identity`, or character input accepted by
-  [`age_identity()`](age_identity.md) (inline secret keys and/or
-  key-file paths).
+  [`age_identity()`](https://pedrobtz.github.io/agecrypt/reference/age_identity.md)
+  (inline secret keys and/or key-file paths).
 
 ## Value
 
@@ -25,5 +25,5 @@ A character vector of `"age1..."` recipient strings, one per identity.
 ``` r
 id <- age_keygen()
 age_pubkey(id)
-#> [1] "age1h4j48mdcsrgthu2h3wsnrpujtu06t2cq3kz6uqlrcmz4v0l5aqkst34wx2"
+#> [1] "age1xs3fgtdxh33nzd46qajha87z3eg2mhragk34pka3g4zphxn0upmqf0sxg5"
 ```

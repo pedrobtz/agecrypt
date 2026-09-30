@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">agecrypt</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,14 +29,34 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/pedrobtz/agecrypt/blob/0.1.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/pedrobtz/agecrypt/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.1" id="agecrypt-011">agecrypt 0.1.1<a class="anchor" aria-label="anchor" href="#agecrypt-011"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-1-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-1"></a></h3>
+<ul><li><p>Fixed silent data loss at the 8 KiB output-buffer boundary. Encrypting a payload of about 8 KB (7992 to 8192 bytes) produced a truncated ciphertext that could not be decrypted, and decrypting a file whose final chunk was exactly 8 KiB (for example, a 73728-byte plaintext) returned truncated plaintext. Both reported success. Ciphertexts of about 8 KB that were created with 0.1.0 may be unrecoverable; decrypt-and-compare any you rely on.</p></li>
+<li><p>Error messages now describe the failure that happened. Previously a failure could report the message of an earlier, unrelated operation.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="security-0-1-1">Security<a class="anchor" aria-label="anchor" href="#security-0-1-1"></a></h3>
+<ul><li><p>Identity files are read, parsed, and scrubbed in native code. Previously the secret key lines passed through <code><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines()</a></code>, which kept them in R’s global string cache for the rest of the session.</p></li>
+<li><p>The vendored ‘agec’ library is updated to version 1.0.0. Headers are now parsed more strictly, as the age specification requires: stanzas with malformed bodies are rejected, including those of unrecognized types.</p></li>
+<li><p>The payload nonce counter now spans all 11 bytes that the age specification defines, and a counter overflow is reported instead of reusing a nonce. No reachable payload size is affected.</p></li>
+<li><p>The native code no longer leaks internal buffers, or leaves a decoded secret on the stack, when an operation fails part way.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="other-changes-0-1-1">Other changes<a class="anchor" aria-label="anchor" href="#other-changes-0-1-1"></a></h3>
+<ul><li>agecrypt now requires R 3.5.0 or later.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="agecrypt-010">agecrypt 0.1.0<a class="anchor" aria-label="anchor" href="#agecrypt-010"></a></h2><p class="text-muted">CRAN release: 2026-08-05</p>
 <ul><li>Initial version.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

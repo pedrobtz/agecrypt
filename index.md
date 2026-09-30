@@ -15,19 +15,19 @@ directions.
 
 ## Installation
 
-Install the development version from GitHub:
+Install the released version from CRAN:
+
+``` r
+
+install.packages("agecrypt")
+```
+
+Or the development version from GitHub:
 
 ``` r
 
 # install.packages("pak")
 pak::pak("pedrobtz/agecrypt")
-```
-
-Once released on CRAN:
-
-``` r
-
-install.packages("agecrypt")
 ```
 
 Either way there is nothing else to install — no system libraries and no
@@ -110,9 +110,9 @@ age_decrypt_text(ct, identities = id)
 #> [1] "db_password_123"
 ```
 
-[`age_encrypt_text()`](reference/age_text.md) is armored by default so
-the result pastes cleanly into a chat message, a commit, or an
-`.Renviron`.
+[`age_encrypt_text()`](https://pedrobtz.github.io/agecrypt/reference/age_text.md)
+is armored by default so the result pastes cleanly into a chat message,
+a commit, or an `.Renviron`.
 
 ## Multiple recipients
 
@@ -194,7 +194,7 @@ ciphertext from a disk problem:
 |----|----|
 | `age_error_recipient` | a recipient string fails to parse |
 | `age_error_identity` | an identity string or key file fails to parse |
-| `age_error_encrypt` | encryption fails after inputs are valid |
+| `age_error_encrypt` | an encryption flag is invalid, or encryption fails |
 | `age_error_decrypt` | no identity/passphrase matches, or authentication fails |
 | `age_error_io` | a file cannot be read or written |
 
@@ -211,10 +211,10 @@ tryCatch(
 
 |  | Public key (recipients) | Passphrase |
 |----|----|----|
-| **raw** | [`age_encrypt_raw()`](reference/age_raw.md) / [`age_decrypt_raw()`](reference/age_raw.md) | [`age_encrypt_raw_passphrase()`](reference/age_passphrase.md) / [`age_decrypt_raw_passphrase()`](reference/age_passphrase.md) |
-| **file** | [`age_encrypt_file()`](reference/age_file.md) / [`age_decrypt_file()`](reference/age_file.md) | [`age_encrypt_file_passphrase()`](reference/age_passphrase.md) / [`age_decrypt_file_passphrase()`](reference/age_passphrase.md) |
-| **text** | [`age_encrypt_text()`](reference/age_text.md) / [`age_decrypt_text()`](reference/age_text.md) | — |
-| **keys** | [`age_keygen()`](reference/age_keygen.md), [`age_pubkey()`](reference/age_pubkey.md), [`age_identity()`](reference/age_identity.md), [`age_identity_free()`](reference/age_identity_free.md) |  |
+| **raw** | [`age_encrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md) / [`age_decrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md) | [`age_encrypt_raw_passphrase()`](https://pedrobtz.github.io/agecrypt/reference/age_passphrase.md) / [`age_decrypt_raw_passphrase()`](https://pedrobtz.github.io/agecrypt/reference/age_passphrase.md) |
+| **file** | [`age_encrypt_file()`](https://pedrobtz.github.io/agecrypt/reference/age_file.md) / [`age_decrypt_file()`](https://pedrobtz.github.io/agecrypt/reference/age_file.md) | [`age_encrypt_file_passphrase()`](https://pedrobtz.github.io/agecrypt/reference/age_passphrase.md) / [`age_decrypt_file_passphrase()`](https://pedrobtz.github.io/agecrypt/reference/age_passphrase.md) |
+| **text** | [`age_encrypt_text()`](https://pedrobtz.github.io/agecrypt/reference/age_text.md) / [`age_decrypt_text()`](https://pedrobtz.github.io/agecrypt/reference/age_text.md) | — |
+| **keys** | [`age_keygen()`](https://pedrobtz.github.io/agecrypt/reference/age_keygen.md), [`age_pubkey()`](https://pedrobtz.github.io/agecrypt/reference/age_pubkey.md), [`age_identity()`](https://pedrobtz.github.io/agecrypt/reference/age_identity.md), [`age_identity_free()`](https://pedrobtz.github.io/agecrypt/reference/age_identity_free.md) |  |
 
 ## How it works, and why you can trust it
 
@@ -260,5 +260,5 @@ worker pool). Normal sequential use is unaffected.
 
 ## License
 
-MIT © the agecrypt authors. The vendored `agec` C sources are
-distributed under the 0BSD license; see `inst/COPYRIGHTS`.
+MIT © Pedro Baltazar. The vendored `agec` C sources are distributed
+under the 0BSD license; see `inst/COPYRIGHTS`.

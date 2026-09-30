@@ -45,7 +45,7 @@ age_decrypt_file(input, output = NULL, identities, overwrite = FALSE)
 - identities:
 
   An `age_identity`, or character input accepted by
-  [`age_identity()`](age_identity.md).
+  [`age_identity()`](https://pedrobtz.github.io/agecrypt/reference/age_identity.md).
 
 ## Value
 

@@ -1,8 +1,9 @@
 # Encrypt and decrypt with a passphrase
 
 Passphrase-based (scrypt) encryption, a separate mode from the
-recipient-based [`age_encrypt_raw()`](age_raw.md) family. A file
-encrypted this way is decrypted with the matching
+recipient-based
+[`age_encrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md)
+family. A file encrypted this way is decrypted with the matching
 `age_decrypt_*_passphrase()` function and the same passphrase — no key
 pair is involved.
 
@@ -59,7 +60,7 @@ age_decrypt_file_passphrase(
 - input, output:
 
   File paths. `output = NULL` appends/strips `.age` as in
-  [`age_encrypt_file()`](age_file.md).
+  [`age_encrypt_file()`](https://pedrobtz.github.io/agecrypt/reference/age_file.md).
 
 - overwrite:
 

@@ -1,9 +1,12 @@
 # Encrypt and decrypt a single string
 
-Convenience wrappers over [`age_encrypt_raw()`](age_raw.md) /
-[`age_decrypt_raw()`](age_raw.md) for one string, ASCII-armored by
-default so the result is copy-pasteable. Encoding is forced to UTF-8 on
-the way in and marked on the way out.
+Convenience wrappers over
+[`age_encrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md)
+/
+[`age_decrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md)
+for one string, ASCII-armored by default so the result is
+copy-pasteable. Encoding is forced to UTF-8 on the way in and marked on
+the way out.
 
 ## Usage
 
@@ -28,13 +31,14 @@ age_decrypt_text(x, identities)
 - armor:
 
   Must be `TRUE` (the default): `age_encrypt_text()` always armors its
-  output. Use [`age_encrypt_raw()`](age_raw.md) for unarmored binary
-  output.
+  output. Use
+  [`age_encrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md)
+  for unarmored binary output.
 
 - identities:
 
   An `age_identity`, or character input accepted by
-  [`age_identity()`](age_identity.md).
+  [`age_identity()`](https://pedrobtz.github.io/agecrypt/reference/age_identity.md).
 
 ## Value
 
@@ -42,7 +46,7 @@ age_decrypt_text(x, identities)
 `age_decrypt_text()` returns a length-1 UTF-8 string.
 `age_decrypt_text()` signals `age_error_decrypt` if the plaintext is not
 valid UTF-8 text (for binary payloads, use
-[`age_decrypt_raw()`](age_raw.md)).
+[`age_decrypt_raw()`](https://pedrobtz.github.io/agecrypt/reference/age_raw.md)).
 
 ## Examples
 

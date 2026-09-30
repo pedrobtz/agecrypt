@@ -11,18 +11,24 @@ external C library dependencies, draws randomness from the operating
 system, and interoperates with the reference `age` implementation.
 
 Detailed agent documentation is indexed in
-[`.agents/README.md`](.agents/README.md):
+[`.agents/README.md`](https://pedrobtz.github.io/agecrypt/.agents/README.md):
 
-- [Architecture](.agents/architecture.md)
-- [Package design](.agents/package-design.md)
-- [Development conventions](.agents/conventions.md)
-- [Testing](.agents/testing.md)
-- [Release process](.agents/release-process.md)
-- [Vendoring agec](.agents/vendoring-agec.md)
-- [Architecture decisions](.agents/decisions/README.md)
+- [Architecture](https://pedrobtz.github.io/agecrypt/.agents/architecture.md)
+- [Package
+  design](https://pedrobtz.github.io/agecrypt/.agents/package-design.md)
+- [Development
+  conventions](https://pedrobtz.github.io/agecrypt/.agents/conventions.md)
+- [Testing](https://pedrobtz.github.io/agecrypt/.agents/testing.md)
+- [Release
+  process](https://pedrobtz.github.io/agecrypt/.agents/release-process.md)
+- [Vendoring
+  agec](https://pedrobtz.github.io/agecrypt/.agents/vendoring-agec.md)
+- [Architecture
+  decisions](https://pedrobtz.github.io/agecrypt/.agents/decisions/README.md)
 
-Treat these documents and [`inst/COPYRIGHTS`](inst/COPYRIGHTS) as
-sources of truth. Update them when a change makes them inaccurate.
+Treat these documents and
+[`inst/COPYRIGHTS`](https://pedrobtz.github.io/agecrypt/inst/COPYRIGHTS)
+as sources of truth. Update them when a change makes them inaccurate.
 
 ## Common commands
 
@@ -72,8 +78,9 @@ opportunistically. Put upstreamable fixes in `pedrobtz/agec`, import an
 immutable vendor tag, and record all provenance and package-only changes
 in `inst/COPYRIGHTS`.
 
-Follow [`.agents/vendoring-agec.md`](.agents/vendoring-agec.md) for
-updates:
+Follow
+[`.agents/vendoring-agec.md`](https://pedrobtz.github.io/agecrypt/.agents/vendoring-agec.md)
+for updates:
 
 ``` sh
 tools/update-vendored-agec.sh <ref> <full-sha>
@@ -95,5 +102,8 @@ does not shadow the Windows system header.
 - SSH keys, plugins, hardware recipients, and post-quantum recipients
   require native stanza support and are intentionally out of scope.
 
-See [`.agents/conventions.md`](.agents/conventions.md) and
-[`.agents/testing.md`](.agents/testing.md) for the detailed rules.
+See
+[`.agents/conventions.md`](https://pedrobtz.github.io/agecrypt/.agents/conventions.md)
+and
+[`.agents/testing.md`](https://pedrobtz.github.io/agecrypt/.agents/testing.md)
+for the detailed rules.

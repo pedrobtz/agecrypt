@@ -32,8 +32,8 @@ age_decrypt_raw(x, identities)
 - identities:
 
   An `age_identity`, or character input accepted by
-  [`age_identity()`](age_identity.md). Tried in order; the first that
-  matches wins.
+  [`age_identity()`](https://pedrobtz.github.io/agecrypt/reference/age_identity.md).
+  Tried in order; the first that matches wins.
 
 ## Value
 
