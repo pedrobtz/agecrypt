@@ -60,9 +60,12 @@ dir.create(sweep, showWarnings = FALSE, recursive = TRUE)
 key <- file.path(dir, "key.txt")
 rec <- trimws(capture(kg_bin, c("-y", key))[1])
 
-# sizes spanning below/at/above the 35-byte armor probe and the 64 KiB STREAM
-# chunk boundary (70000 > 65536 => the payload spans two STREAM chunks)
-sizes <- c(0L, 5L, 34L, 35L, 100L, 70000L)
+# sizes spanning below/at/above the 35-byte armor probe, the 8 KiB output
+# buffer, and the 64 KiB STREAM chunk boundary (70000 > 65536 => the payload
+# spans two STREAM chunks). 8000 and 8192 land the encrypt-side output on the
+# 8 KiB buffer boundary, and 73728 (8 KiB + 64 KiB) makes the last STREAM chunk
+# decrypt to exactly 8 KiB -- where agecrypt 0.1.0 truncated output.
+sizes <- c(0L, 5L, 34L, 35L, 100L, 8000L, 8192L, 70000L, 73728L)
 
 # the payload for size n is strrep("A", n); the test reconstructs it from the
 # file name, so no separate plaintext fixture needs to be committed.
