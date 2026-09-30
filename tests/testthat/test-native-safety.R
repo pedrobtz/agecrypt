@@ -60,3 +60,28 @@ test_that("tampering with the header fails authentication", {
     class = "age_error_decrypt"
   )
 })
+
+test_that("an over-long body line in an unrecognized stanza is rejected", {
+  # agec validates the body of stanzas it does not recognize; a 65th
+  # character on a body line used to be stored one byte past the end of the
+  # 64-byte line buffer before the length check. ASan CI catches a
+  # regression; here the input must simply be rejected.
+  p <- new_pair()
+  ct <- age_encrypt_raw(charToRaw("x"), recipients = p$rec)
+  # the header ends at the first "\n---"; splice a stanza in before it
+  marker <- charToRaw("\n---")
+  at <- which(vapply(
+    seq_len(length(ct) - length(marker) + 1L),
+    function(i) identical(ct[i:(i + length(marker) - 1L)], marker),
+    logical(1)
+  ))[1]
+  for (n in c(64L, 65L, 200L)) {
+    stanza <- charToRaw(paste0("\n-> grease\n", strrep("A", n)))
+    bad <- c(ct[seq_len(at - 1L)], stanza, ct[at:length(ct)])
+    expect_error(
+      age_decrypt_raw(bad, identities = p$id),
+      class = "age_error_decrypt",
+      info = n
+    )
+  }
+})

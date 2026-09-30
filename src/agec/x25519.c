@@ -1,10 +1,11 @@
 #include "common.h"
 #include "base64.h"
 #include "bech32.h"
+#include "io.h"
+#include "crypto.h"
 #include "header.h"
 #include "keyenc.h"
 #include "util.h"
-#include "crypto.h"
 #include "x25519.h"
 
 #define HDRINITLEN  128

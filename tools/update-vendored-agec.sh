@@ -22,7 +22,7 @@ Environment overrides:
                          default: src/agec
 
 Example:
-  $0 vendor-2026-07-09 5c95fe5b7bc0d9888333709eb7443a3a92fe5be7
+  $0 vendor-2026-09-30 0b9532bd0133873947f3c2aa14b5198cf028ca41
 EOF
 }
 

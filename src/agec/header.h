@@ -1,11 +1,10 @@
 typedef struct Header Header;
 struct Header {
-	uchar *data;
-	usize len;
-	usize allocated;
+	Obuf *ob;
+	Hmacsha256ctx ctx;
 };
 
-const char *hdrinit(Header *h);
+void hdrinit(Header *h, uchar filekey[16], Obuf *ob);
 const char *hdrappend(Header *h, char *fmt, ...);
-void hdrmac(uchar *data, usize len, uchar filekey[16], char *out, usize *outlen);
+void hdrfinish(Header *h, char mac[B64EBUFLEN(32)], usize *maclen);
 void mac(uchar *data, usize len, uchar filekey[16], uchar out[32]);

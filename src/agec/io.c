@@ -2,14 +2,15 @@
 #include "base64.h"
 #include "util.h"
 #include "io.h"
-#include "memio.h"
+#include "memio.h"   /* package-only: ageread()/agewrite() */
 
 #define RECINITLEN 512
 #define UNCHECKED  2
 
 const char armorfirst[36] = "-----BEGIN AGE ENCRYPTED FILE-----\n";
 const char armorlast[34]  = "-----END AGE ENCRYPTED FILE-----\n";
-typedef char armorfirst_must_fit_iobuf[(sizeof(armorfirst) - 1 < IOBUFSIZE) ? 1 : -1];
+/* compile-time check: the armor probe must fit in one read buffer */
+typedef char armorfirst_fits_iobuf[(sizeof(armorfirst) - 1 < IOBUFSIZE) ? 1 : -1];
 
 static ssize awrite(Obuf *b, void *buf, usize nbytes);
 static ssize aflush(Obuf *b);
@@ -28,32 +29,17 @@ bwrite(Obuf *b, void *buf, usize nbytes)
 
 	if(b->isarmor)
 		return awrite(b, buf, nbytes);
-	if(nbytes > IOBUFSIZE) {
-		ret = bflush(b);
-		if(ret == -1)
-			return -1;
-		return writeall(b->fd, buf, nbytes);
-	}
 	rest = IOBUFSIZE - b->cur;
 	c = (rest > nbytes) ? nbytes : rest;
 	memcpy(b->buf.buf + b->cur, buf, c);
+	b->cur += c;
 	if(rest > nbytes) {
-		b->cur += nbytes;
 		return 0;
 	} else {
-		/*
-		 * Divergence from upstream agec: flush b->cur + c (== IOBUFSIZE),
-		 * not b->cur. The memcpy above just filled buf[cur .. IOBUFSIZE)
-		 * with the first c bytes of this write; writing only b->cur drops
-		 * them, silently truncating output whenever a write lands exactly
-		 * on the buffer boundary.
-		 */
-		ret = writeall(b->fd, b->buf.buf, b->cur + c);
+		ret = bflush(b);
 		if(ret == -1)
 			return -1;
-		memcpy(b->buf.buf, (uchar *)buf + rest, nbytes - rest);
-		b->cur = nbytes - rest;
-		return ret;
+		return writeall(b->fd, (uchar *)buf + c, nbytes - c);
 	}
 }
 
@@ -136,8 +122,6 @@ isarmor(Ibuf *b)
 	nr = readall(b->fd, b->buf, sizeof(armorfirst) - 1, &b->eof);
 	if(nr == -1)
 		return -1;
-	if(nr == 0)
-		b->eof = 1;
 	b->size = nr;
 	if((usize)nr < sizeof(armorfirst) - 1)
 		return 0;
@@ -184,21 +168,13 @@ bread(Ibuf *b, void *buf, usize nbytes)
 		if(b->isarmor == -1)
 			return -1;
 	}
-	/*
-	 * Divergence from upstream agec: only report EOF here once the bytes
-	 * buffered by the armor probe (isarmor) have been consumed. Upstream
-	 * returns 0 whenever b->eof is set, which drops the whole input when
-	 * it is shorter than the 35-byte probe (e.g. encrypting "hello").
-	 */
-	if(b->eof && b->cur == b->size)
-		return 0;
 	while(nbytes > 0) {
 		if(b->cur == b->size) {
 			if(b->recording && b->size > 0)
 				recappend(b, b->buf, b->size);
 			b->cur = b->size = 0;
 		}
-		if(b->size == 0) {
+		if(b->size == 0 && !b->eof) {
 			if(b->isarmor)
 				nr = aread(b, b->buf, IOBUFSIZE);
 			else
@@ -216,6 +192,8 @@ bread(Ibuf *b, void *buf, usize nbytes)
 			b->size = nr;
 		}
 		rest = b->size - b->cur;
+		if(rest == 0 && b->eof)
+			break;
 		c = (rest > nbytes) ? nbytes : rest;
 		memcpy(buf, b->buf + b->cur, c);
 		buf = (uchar *)buf + c;
@@ -347,7 +325,7 @@ bpeek(Ibuf *b, char *c)
 		if(b->isarmor == -1)
 			return -1;
 	}
-	if(b->eof && b->cur == b->size)     /* see the note in bread() */
+	if(b->eof && b->cur == b->size)
 		return 0;
 	if(b->cur < b->size) {
 		*c = b->buf[b->cur];
@@ -397,7 +375,7 @@ recappend(Ibuf *b, void *buf, usize len)
 			}
 			cap = ncap;
 		}
-		nbuf = realloc(b->rec.buf, ncap);   /* keep b->rec.buf on failure */
+		nbuf = realloc(b->rec.buf, ncap);
 		if(nbuf == NULL) {
 			b->recfail = eget();
 			return;
