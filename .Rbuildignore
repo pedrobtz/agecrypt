@@ -15,3 +15,6 @@
 ^\.vscode$
 ^\.DS_Store$
 ^\.agents$
+^\.claude$
+^\.superpowers$
+^\.worktrees$
