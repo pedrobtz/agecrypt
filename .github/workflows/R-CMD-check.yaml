@@ -2,8 +2,11 @@
 # runners, CRAN-like compiler containers (clang23, ubuntu-clang,
 # ubuntu-gcc16), and the no-Suggests flavor.
 on:
-  push:
-    branches: [main, master]
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
+  schedule:
+    - cron: "0 0 * * 6"
+  workflow_dispatch:
   # `labeled` so that adding `full-ci` to a pull request reruns it in full.
   pull_request:
     types: [opened, synchronize, reopened, labeled]
