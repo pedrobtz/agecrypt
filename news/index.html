@@ -33,7 +33,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="agecrypt-011">agecrypt 0.1.1<a class="anchor" aria-label="anchor" href="#agecrypt-011"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.1" id="agecrypt-011">agecrypt 0.1.1<a class="anchor" aria-label="anchor" href="#agecrypt-011"></a></h2><p class="text-muted">CRAN release: 2026-10-21</p>
 <div class="section level3">
 <h3 id="bug-fixes-0-1-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-1-1"></a></h3>
 <ul><li><p>Fixed silent data loss at the 8 KiB output-buffer boundary. Encrypting a payload of about 8 KB (7992 to 8192 bytes) produced a truncated ciphertext that could not be decrypted, and decrypting a file whose final chunk was exactly 8 KiB (for example, a 73728-byte plaintext) returned truncated plaintext. Both reported success. Ciphertexts of about 8 KB that were created with 0.1.0 may be unrecoverable; decrypt-and-compare any you rely on.</p></li>

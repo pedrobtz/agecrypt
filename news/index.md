@@ -2,6 +2,8 @@
 
 ## agecrypt 0.1.1
 
+CRAN release: 2026-10-21
+
 ### Bug fixes
 
 - Fixed silent data loss at the 8 KiB output-buffer boundary. Encrypting
