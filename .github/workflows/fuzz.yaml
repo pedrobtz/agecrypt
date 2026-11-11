@@ -5,19 +5,15 @@ name: Fuzz
 # a weekly schedule, and on demand. A crash fails the job and uploads the
 # reproducer.
 on:
-  push:
-    branches: [main, master]
-    paths:
-      - 'src/**'
-      - 'fuzz/**'
-      - '.github/workflows/fuzz.yaml'
+  # No `push:`: a pull request already checks its merge with main,
+  # and the schedule checks main (r-actions README, "Pushes to main").
   pull_request:
     paths:
       - 'src/**'
       - 'fuzz/**'
       - '.github/workflows/fuzz.yaml'
   schedule:
-    - cron: '17 4 * * 1' # Mondays
+    - cron: '10 0 * * 6' # Mondays
   workflow_dispatch:
     inputs:
       seconds:
