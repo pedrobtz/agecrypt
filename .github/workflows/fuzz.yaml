@@ -13,7 +13,7 @@ on:
       - 'fuzz/**'
       - '.github/workflows/fuzz.yaml'
   schedule:
-    - cron: '10 0 * * 6' # Mondays
+    - cron: '10 0 * * 0'  # weekly, Sundays
   workflow_dispatch:
     inputs:
       seconds:
