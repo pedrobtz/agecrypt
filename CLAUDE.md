@@ -5,16 +5,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Shared conventions
 
-The portfolio's shared rules are synced into `.claude/shared/` from
-`pedrobtz/packages:claude/shared/`. Never edit them here. Where this file and
-a shared file disagree, this file wins for this package.
+<!-- r-skills: shared-rules -->
 
-@.claude/shared/workflow.md
-@.claude/shared/r-package.md
-@.claude/shared/ci.md
-@.claude/shared/native-code.md
-@.claude/shared/correctness.md
-@.claude/shared/assurance.md
+The portfolio's shared rules (`workflow`, `r-package`, `ci`, `native-code`,
+`correctness`, `assurance`) come from the
+[r-skills](https://github.com/pedrobtz/r-skills) plugin's `rules/`, loaded at
+session start because of the marker above. Never copy them here. Where this
+file and a shared rule disagree, this file wins for this package. Cloud
+sessions do not load the plugin and run without them.
 
 ## What this is
 
@@ -69,7 +67,7 @@ none recorded.
 
 agecrypt has no `cran-release.yaml`, so `CRAN-SUBMISSION` is git-ignored and
 the release tag, GitHub release and `.9000` bump are done by hand with
-`pkg-post-cran`. This is a deviation from `.claude/shared/workflow.md`.
+`pkg-post-cran`. This is a deviation from the shared `workflow.md` rules.
 
 ## Commands
 
@@ -152,7 +150,7 @@ package-owned files and the Makevars layout.
   `rchk`, `analyzers` and `cran-special`; `coverage.yaml` calls
   `coverage.yml`, pinned to a commit.
 - Both callers run quick on pull requests, full with the `full-ci` label, and
-  full on every push to `main`, a deviation from `.claude/shared/ci.md`,
+  full on every push to `main`, a deviation from the shared `ci.md` rules,
   whose callers run quick there. ASan and valgrind run only in the full
   profile, so a native change takes `full-ci`.
 - `fuzz.yaml` is the package's own: libFuzzer under ASan+UBSan over the two
